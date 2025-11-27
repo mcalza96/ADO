@@ -1,5 +1,6 @@
 import streamlit as st
 from services.masters.disposal_service import DisposalService
+from services.masters.location_service import LocationService
 from database.db_manager import DatabaseManager
 from models.masters.location import Site
 from models.masters.disposal import Plot, SoilSample
@@ -10,6 +11,7 @@ def disposal_page():
     
     db = DatabaseManager()
     disposal_service = DisposalService(db)
+    location_service = LocationService(db)
     
     # 1. Manage Sites (Predios)
     st.subheader("Predios")
@@ -29,13 +31,13 @@ def disposal_page():
                 try:
                     site = Site(id=None, name=s_name, owner_name=s_owner, address=s_address, 
                                 region=s_region, latitude=lat, longitude=lon)
-                    disposal_service.create_site(site)
+                    location_service.create_site(site)
                     st.success("Predio creado")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error: {e}")
 
-    sites = disposal_service.get_all_sites()
+    sites = location_service.get_all_sites()
     if not sites:
         st.info("No hay predios registrados.")
         return
@@ -97,14 +99,18 @@ def disposal_page():
                     
                     if st.form_submit_button("Guardar Análisis"):
                         try:
-                            sample = SoilSample(id=None, plot_id=sel_plot_id, sampling_date=s_date, valid_until=valid_date,
-                                                ph_level=ph, nitrogen_current=nit, phosphorus_current=phos, potassium_current=pot)
-                            disposal_service.add_soil_sample(sample)
+                            sample = SoilSample(
+                                id=None, plot_id=sel_plot_id, sampling_date=s_date, valid_until=valid_date,
+                                ph=ph, nitrogen_ppm=nit, phosphorus_ppm=phos, potassium_ppm=pot
+                            )
+                            disposal_service.create_soil_sample(sample)
                             st.success("Análisis guardado")
+                            st.rerun()
                         except Exception as e:
                             st.error(f"Error: {e}")
             
             samples = disposal_service.get_soil_samples_by_plot(sel_plot_id)
             if samples:
-                st.write("Historial de Análisis de Suelo:")
                 st.dataframe([vars(s) for s in samples], use_container_width=True)
+            else:
+                st.info("No hay análisis de suelo vigentes.")

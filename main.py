@@ -1,9 +1,8 @@
 import streamlit as st
 from ui.auth.login import login_page
-from ui.masters.clients_view import clients_page
-from ui.masters.transport_view import transport_page
-from ui.masters.treatment_view import treatment_page
-from ui.masters.disposal_view import disposal_page
+from ui.config_view import config_page
+from ui.requests_view import requests_page
+from ui.planning_view import planning_page
 from ui.operations.operations_view import operations_page
 from ui.operations.dashboard_view import dashboard_page
 
@@ -13,6 +12,31 @@ st.set_page_config(
     page_icon="🚛",
     layout="wide"
 )
+
+import sqlite3
+import os
+
+def run_migrations():
+    """
+    Checks and applies critical database migrations.
+    """
+    db_path = "database/biosolids.db"
+    if os.path.exists(db_path):
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            
+            # Check for requested_date in loads
+            cursor.execute("PRAGMA table_info(loads)")
+            columns = [info[1] for info in cursor.fetchall()]
+            if "requested_date" not in columns:
+                cursor.execute("ALTER TABLE loads ADD COLUMN requested_date DATETIME")
+                conn.commit()
+                print("Migration applied: Added requested_date to loads table.")
+                
+            conn.close()
+        except Exception as e:
+            print(f"Migration failed: {e}")
 
 def main():
     # Initialize session state for user
@@ -34,7 +58,7 @@ def main():
             
             menu = st.radio(
                 "Navegación",
-                ["Dashboard", "Clientes", "Transportistas", "Plantas", "Predios", "Operaciones", "Configuración"]
+                ["Dashboard", "Solicitudes", "Planificación", "Operaciones", "Configuración"]
             )
             
             st.divider()
@@ -45,19 +69,15 @@ def main():
         # Main Content Area
         if menu == "Dashboard":
             dashboard_page()
-                
-        elif menu == "Clientes":
-            clients_page()
-        elif menu == "Transportistas":
-            transport_page()
-        elif menu == "Plantas":
-            treatment_page()
-        elif menu == "Predios":
-            disposal_page()
+        elif menu == "Solicitudes":
+            requests_page()
+        elif menu == "Planificación":
+            planning_page()
         elif menu == "Operaciones":
             operations_page()
         elif menu == "Configuración":
-            st.warning("Configuración del sistema")
+            config_page()
 
 if __name__ == "__main__":
+    run_migrations()
     main()

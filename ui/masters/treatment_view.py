@@ -1,6 +1,7 @@
 import streamlit as st
 from services.masters.treatment_service import TreatmentService
 from services.masters.client_service import ClientService
+from services.masters.location_service import LocationService
 from database.db_manager import DatabaseManager
 from models.masters.location import Facility
 from models.masters.treatment import Batch, LabResult
@@ -12,6 +13,7 @@ def treatment_page():
     db = DatabaseManager()
     treatment_service = TreatmentService(db)
     client_service = ClientService(db)
+    location_service = LocationService(db)
     
     # 1. Select Client
     clients = client_service.get_all_clients()
@@ -38,13 +40,13 @@ def treatment_page():
             if st.form_submit_button("Guardar Planta"):
                 try:
                     f = Facility(id=None, client_id=selected_client_id, name=f_name, address=f_address, latitude=lat, longitude=lon)
-                    treatment_service.create_facility(f)
+                    location_service.create_facility(f)
                     st.success("Planta creada")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error: {e}")
 
-    facilities = treatment_service.get_facilities_by_client(selected_client_id)
+    facilities = location_service.get_facilities_by_client(selected_client_id)
     
     if not facilities:
         st.info("No hay plantas registradas para este cliente.")

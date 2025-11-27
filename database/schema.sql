@@ -51,29 +51,30 @@ CREATE TABLE IF NOT EXISTS drivers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     contractor_id INTEGER NOT NULL,
     name TEXT NOT NULL,
-    rut TEXT UNIQUE, -- National ID
+    rut TEXT UNIQUE,
     license_number TEXT,
-    phone TEXT,
     is_active BOOLEAN DEFAULT 1,
     FOREIGN KEY (contractor_id) REFERENCES contractors(id) ON DELETE CASCADE
 );
 
--- Vehicles table: Trucks
+-- Vehicles table: Trucks and trailers
 CREATE TABLE IF NOT EXISTS vehicles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     contractor_id INTEGER NOT NULL,
-    license_plate TEXT NOT NULL UNIQUE,
-    tare_weight REAL NOT NULL, -- Weight in Kg
-    max_capacity REAL NOT NULL, -- Weight in Kg
     brand TEXT,
     model TEXT,
-    year INTEGER,
+    license_plate TEXT NOT NULL UNIQUE,
+    max_capacity REAL NOT NULL, -- In Kg
+    tare_weight REAL NOT NULL, -- In Kg
     is_active BOOLEAN DEFAULT 1,
     FOREIGN KEY (contractor_id) REFERENCES contractors(id) ON DELETE CASCADE
 );
 
--- Facilities table: Treatment plants or Origin points
--- Placed here as it is referenced in Routes
+-- ==========================================
+-- Treatment Module (Origin)
+-- ==========================================
+
+-- Facilities table: Treatment Plants (WTP)
 CREATE TABLE IF NOT EXISTS facilities (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     client_id INTEGER NOT NULL,
@@ -85,8 +86,37 @@ CREATE TABLE IF NOT EXISTS facilities (
     FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
 );
 
--- Sites table: Agricultural fields (Destinations)
--- Placed here as it is referenced in Routes
+-- Batches table: Production lots of biosolids
+CREATE TABLE IF NOT EXISTS batches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    facility_id INTEGER NOT NULL,
+    batch_code TEXT NOT NULL UNIQUE, -- e.g., 'LOTE-2023-10-01-A'
+    production_date DATE NOT NULL,
+    initial_tonnage REAL,
+    current_tonnage REAL,
+    class_type TEXT CHECK (class_type IN ('A', 'B', 'NoClass')), -- Biosolid Classification
+    status TEXT DEFAULT 'Available', -- Available, Depleted, Quarantined
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (facility_id) REFERENCES facilities(id) ON DELETE CASCADE
+);
+
+-- Lab Results table: Analysis for batches
+CREATE TABLE IF NOT EXISTS lab_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    batch_id INTEGER NOT NULL,
+    analysis_date DATE NOT NULL,
+    parameter_name TEXT NOT NULL, -- e.g., 'Arsenic', 'Salmonella'
+    value REAL NOT NULL,
+    unit TEXT NOT NULL, -- e.g., 'mg/kg', 'MPN/g'
+    is_compliant BOOLEAN,
+    FOREIGN KEY (batch_id) REFERENCES batches(id) ON DELETE CASCADE
+);
+
+-- ==========================================
+-- Location Module (Destination)
+-- ==========================================
+
+-- Sites table: Agricultural fields or disposal sites
 CREATE TABLE IF NOT EXISTS sites (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -96,54 +126,6 @@ CREATE TABLE IF NOT EXISTS sites (
     latitude REAL,
     longitude REAL,
     is_active BOOLEAN DEFAULT 1
-);
-
--- Routes table: Standard routes definition
-CREATE TABLE IF NOT EXISTS routes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    origin_facility_id INTEGER NOT NULL,
-    destination_site_id INTEGER NOT NULL,
-    estimated_km REAL,
-    description TEXT,
-    is_active BOOLEAN DEFAULT 1,
-    FOREIGN KEY (origin_facility_id) REFERENCES facilities(id) ON DELETE CASCADE,
-    FOREIGN KEY (destination_site_id) REFERENCES sites(id) ON DELETE CASCADE
-);
-
--- ==========================================
--- Treatment Module (Plant)
--- ==========================================
-
--- Batches table: Daily production lots
-CREATE TABLE IF NOT EXISTS batches (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    facility_id INTEGER NOT NULL,
-    batch_code TEXT NOT NULL UNIQUE, -- e.g., 20231027-FAC1
-    production_date DATE NOT NULL,
-    sludge_type TEXT, -- e.g., 'Centrifuged', 'Dried'
-    class_type TEXT CHECK (class_type IN ('A', 'B')),
-    initial_tonnage REAL,
-    status TEXT DEFAULT 'Open', -- Open, Closed
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (facility_id) REFERENCES facilities(id) ON DELETE CASCADE
-);
-
--- Lab Results table: Linked to Batch
-CREATE TABLE IF NOT EXISTS lab_results (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    batch_id INTEGER NOT NULL,
-    sample_date DATE NOT NULL,
-    ph REAL,
-    humidity_percentage REAL,
-    dry_matter_percentage REAL,
-    nitrogen REAL,
-    phosphorus REAL,
-    potassium REAL,
-    heavy_metals_json TEXT, -- JSON string to store dynamic metals (As, Cd, Hg, Pb, etc.)
-    coliforms REAL,
-    salmonella_presence BOOLEAN,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (batch_id) REFERENCES batches(id) ON DELETE CASCADE
 );
 
 -- ==========================================
@@ -195,13 +177,14 @@ CREATE TABLE IF NOT EXISTS applications (
 -- Loads table: The core operational record
 CREATE TABLE IF NOT EXISTS loads (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ticket_number TEXT UNIQUE, -- Physical ticket ID if exists
+    ticket_number TEXT, -- Physical ticket ID if exists (Nullable)
+    guide_number TEXT, -- Dispatch Guide Number (Nullable)
     
     -- Relationships
-    driver_id INTEGER NOT NULL,
-    vehicle_id INTEGER NOT NULL,
+    driver_id INTEGER, -- Nullable at Request
+    vehicle_id INTEGER, -- Nullable at Request
     origin_facility_id INTEGER NOT NULL,
-    destination_site_id INTEGER NOT NULL,
+    destination_site_id INTEGER, -- Nullable at Request
     batch_id INTEGER, -- Nullable if not assigned yet, but usually required
     
     -- Weights (in Kg)
@@ -210,7 +193,8 @@ CREATE TABLE IF NOT EXISTS loads (
     weight_net REAL,   -- Calculated
     
     -- Status and Timing
-    status TEXT NOT NULL CHECK (status IN ('Scheduled', 'InTransit', 'Delivered', 'Cancelled')) DEFAULT 'Scheduled',
+    status TEXT NOT NULL CHECK (status IN ('Requested', 'Scheduled', 'InTransit', 'Delivered', 'Cancelled')) DEFAULT 'Requested',
+    requested_date DATETIME, -- New field for traceability
     scheduled_date DATETIME,
     dispatch_time DATETIME,
     arrival_time DATETIME,
@@ -246,28 +230,3 @@ CREATE TABLE IF NOT EXISTS maintenance_events (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL
 );
-
--- ==========================================
--- Financial Module (Rates)
--- ==========================================
-
--- Service Rates table
-CREATE TABLE IF NOT EXISTS service_rates (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    contractor_id INTEGER NOT NULL,
-    route_id INTEGER NOT NULL,
-    rate_per_ton REAL,
-    rate_per_trip REAL,
-    currency TEXT DEFAULT 'CLP',
-    valid_from DATE NOT NULL,
-    valid_to DATE,
-    is_active BOOLEAN DEFAULT 1,
-    FOREIGN KEY (contractor_id) REFERENCES contractors(id) ON DELETE CASCADE,
-    FOREIGN KEY (route_id) REFERENCES routes(id) ON DELETE CASCADE
-);
-
--- Indexes for performance
-CREATE INDEX idx_loads_status ON loads(status);
-CREATE INDEX idx_loads_date ON loads(scheduled_date);
-CREATE INDEX idx_batches_facility ON batches(facility_id);
-CREATE INDEX idx_vehicles_contractor ON vehicles(contractor_id);
