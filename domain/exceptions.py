@@ -1,0 +1,15 @@
+class DomainException(Exception):
+    """Base class for all domain exceptions."""
+    pass
+
+class ComplianceException(DomainException):
+    """Raised when a compliance rule is violated (e.g. Heavy Metals)."""
+    pass
+
+class AgronomicException(DomainException):
+    """Raised when an agronomic rule is violated (e.g. Application Rate)."""
+    pass
+
+class LogisticsException(DomainException):
+    """Raised when a logistics rule is violated (e.g. Overweight)."""
+    pass
