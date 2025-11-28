@@ -39,61 +39,113 @@ def operations_page():
         st.divider()
         st.header("Registro de Despacho")
         
-        # Batch Selection (If not assigned in planning)
-        # Assuming we need to specify WHAT we are carrying exactly if not done before.
-        # For MVP, let's assume we just need to validate the destination accepts the product.
-        # We'll ask for the Batch here to ensure validation happens at pickup.
+        # 2. Execution Form
+        st.divider()
+        st.header("Registro de Despacho")
         
-        batches = treatment_service.get_batches_by_facility(load.origin_facility_id)
-        if not batches:
-            st.error("No hay lotes disponibles en esta planta.")
-            return
-            
-        b_opts = {f"{b.batch_code} (Clase {b.class_type})": b for b in batches}
-        sel_batch_key = st.selectbox("LOTE (BATCH) CARGADO", list(b_opts.keys()))
+        # Determine if Origin is Client or Treatment Plant
+        is_treatment_origin = load.origin_treatment_plant_id is not None
         
-        if sel_batch_key:
-            batch = b_opts[sel_batch_key]
+        container_1_id = None
+        container_2_id = None
+        
+        if is_treatment_origin:
+            st.info("🏭 Origen: Planta de Tratamiento - Seleccione Contenedores")
+            from services.masters.container_service import ContainerService
+            from services.operations.treatment_batch_service import TreatmentBatchService
             
-            # Validate Destination
-            try:
-                is_valid = disposal_service.validate_application(load.destination_site_id, batch.class_type)
-                if not is_valid:
-                    st.error("⛔ ALERTA: El predio destino NO acepta este tipo de lodo. Contacte a Planificación.")
-                    return
-                else:
-                    st.success("✅ Destino Validado")
-            except Exception as e:
-                st.error(f"Error validación: {e}")
+            c_service = ContainerService(db)
+            # Get containers that are READY or MONITORING (Active) at this plant
+            # Ideally we should filter by 'READY' only, but user said "available/ready"
+            # Let's use get_ready_containers logic or similar.
+            # For now, let's fetch all containers at the plant that are IN_USE (holding a batch)
+            # We need a method to get containers with active batches.
+            
+            # Let's fetch all containers currently at the plant
+            # And filter those that have a READY batch?
+            # Or just list all containers at the plant.
+            
+            # Simplified: List all containers currently located at the plant
+            # We need to know which containers are at the plant.
+            # Container entity has 'current_plant_id'.
+            
+            # We need a service method: get_containers_at_plant(plant_id)
+            # Let's assume get_available_containers returns those with status 'AVAILABLE'
+            # But here we need those with status 'IN_USE' (holding a batch) that are ready to go.
+            
+            # Let's use the batch service to get ready batches and extract containers
+            batch_service = TreatmentBatchService(db)
+            ready_batches = batch_service.get_ready_batches(load.origin_treatment_plant_id)
+            
+            if not ready_batches:
+                st.warning("No hay contenedores listos para despacho en esta planta.")
                 return
-
-            # Inputs
-            col1, col2 = st.columns(2)
-            with col1:
-                guide_num = st.text_input("N° GUÍA DE DESPACHO")
-                ticket_num = st.text_input("N° TICKET DE PESAJE")
+                
+            # Map container IDs to Codes
+            # We need to fetch container codes. This is inefficient N+1 but fine for MVP.
+            # Better: batch object should have container code or we fetch all containers.
+            all_containers = c_service.get_all_containers()
+            c_map = {c.id: c.code for c in all_containers}
             
-            with col2:
-                weight_tons = st.number_input("PESO NETO (Toneladas)", min_value=0.0, step=0.1, format="%.2f")
-                st.caption(f"Equivalente: {weight_tons * 1000:.0f} kg")
+            ready_c_opts = {f"{c_map.get(b.container_id, 'Unknown')} (Batch {b.id})": b.container_id for b in ready_batches}
+            
+            c1_key = st.selectbox("Contenedor 1", ["Seleccionar..."] + list(ready_c_opts.keys()))
+            if c1_key != "Seleccionar...":
+                container_1_id = ready_c_opts[c1_key]
+                
+            c2_key = st.selectbox("Contenedor 2", ["Seleccionar..."] + list(ready_c_opts.keys()))
+            if c2_key != "Seleccionar...":
+                container_2_id = ready_c_opts[c2_key]
 
-            # Finalize Button
-            if st.button("✅ CONFIRMAR Y CERRAR CARGA"):
-                if guide_num and ticket_num and weight_tons > 0:
-                    try:
-                        # Convert Tons to Kg for consistency if needed, or store as is.
-                        # Domain rules usually work in Kg, let's convert.
-                        weight_kg = weight_tons * 1000
-                        
-                        ops_service.finalize_load(
-                            load_id=load.id,
-                            guide_number=guide_num,
-                            ticket_number=ticket_num,
-                            weight_net=weight_kg
-                        )
-                        st.success("🎉 Carga registrada y finalizada correctamente.")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error al finalizar: {e}")
-                else:
-                    st.warning("Complete todos los campos (Guía, Ticket, Peso).")
+        else:
+            # Client Origin Logic (Existing)
+            batches = treatment_service.get_batches_by_facility(load.origin_facility_id)
+            if not batches:
+                st.error("No hay lotes disponibles en esta planta.")
+                return
+                
+            b_opts = {f"{b.batch_code} (Clase {b.class_type})": b for b in batches}
+            sel_batch_key = st.selectbox("LOTE (BATCH) CARGADO", list(b_opts.keys()))
+            
+            if sel_batch_key:
+                batch = b_opts[sel_batch_key]
+                # Validate Destination
+                try:
+                    is_valid = disposal_service.validate_application(load.destination_site_id, batch.class_type)
+                    if not is_valid:
+                        st.error("⛔ ALERTA: El predio destino NO acepta este tipo de lodo. Contacte a Planificación.")
+                        return
+                    else:
+                        st.success("✅ Destino Validado")
+                except Exception as e:
+                    st.error(f"Error validación: {e}")
+                    return
+
+        # Inputs
+        col1, col2 = st.columns(2)
+        with col1:
+            ticket_num = st.text_input("N° TICKET DE PESAJE")
+        
+        with col2:
+            weight_gross = st.number_input("PESO BRUTO (Kg)", min_value=0.0, step=10.0)
+            weight_tare = st.number_input("PESO TARA (Kg)", min_value=0.0, step=10.0)
+            st.caption(f"Neto: {weight_gross - weight_tare} kg")
+
+        # Finalize Button
+        if st.button("✅ CONFIRMAR DESPACHO"):
+            if ticket_num and weight_gross > weight_tare:
+                try:
+                    ops_service.register_dispatch(
+                        load_id=load.id,
+                        ticket=ticket_num,
+                        gross=weight_gross,
+                        tare=weight_tare,
+                        container_1_id=container_1_id,
+                        container_2_id=container_2_id
+                    )
+                    st.success("🎉 Despacho registrado correctamente.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error al registrar: {e}")
+            else:
+                st.warning("Verifique los datos (Ticket, Pesos).")

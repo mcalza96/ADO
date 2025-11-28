@@ -85,11 +85,12 @@ def transport_page():
                     with col2:
                         tare = st.number_input("Tara (kg)", min_value=0.0)
                         cap = st.number_input("Capacidad Máx (kg)", min_value=0.0)
+                        v_type = st.selectbox("Tipo de Camión", ["BATEA", "AMPLIROLL"])
                         model = st.text_input("Modelo")
                     
                     if st.form_submit_button("Guardar Camión"):
                         try:
-                            v = Vehicle(id=None, contractor_id=v_contractor_id, license_plate=plate, tare_weight=tare, max_capacity=cap, brand=brand, model=model, year=year)
+                            v = Vehicle(id=None, contractor_id=v_contractor_id, license_plate=plate, tare_weight=tare, max_capacity=cap, brand=brand, model=model, year=year, type=v_type)
                             transport_service.create_vehicle(v)
                             st.success("Camión registrado")
                             st.rerun()

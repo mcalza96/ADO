@@ -45,8 +45,31 @@ def requests_page():
                 for _ in range(num_requests):
                     ops_service.create_request(facility_id, req_date)
                 st.success(f"✅ Se han generado {num_requests} solicitudes de retiro para el {req_date} exitosamente.")
+                st.rerun()
             except Exception as e:
                 st.error(f"Error al crear solicitud: {e}")
+
+    st.divider()
+    st.subheader("🔍 Seguimiento de Solicitudes")
+    
+    # Fetch loads for this facility
+    loads = ops_service.get_loads_by_facility(facility_id)
+    
+    if not loads:
+        st.info("No hay solicitudes registradas para esta planta.")
+    else:
+        # Simple table view
+        data = []
+        for l in loads:
+            data.append({
+                "ID": l.id,
+                "Fecha Programada": l.scheduled_date,
+                "Estado": l.status,
+                "Transportista": l.transport_company_id if l.transport_company_id else "Pendiente",
+                "Destino": "Asignado" if (l.destination_facility_id or l.destination_treatment_plant_id) else "Pendiente"
+            })
+        
+        st.dataframe(data, use_container_width=True)
                 
     # 4. View Active Requests
     st.divider()

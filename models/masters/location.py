@@ -10,6 +10,7 @@ class Facility:
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     is_active: bool = True
+    allowed_vehicle_types: Optional[str] = None  # CSV: 'BATEA,AMPLIROLL' o None para ambos
 
 @dataclass
 class Site:

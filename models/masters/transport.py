@@ -31,4 +31,5 @@ class Vehicle:
     brand: Optional[str] = None
     model: Optional[str] = None
     year: Optional[int] = None
+    type: str = 'BATEA' # BATEA, AMPLIROLL
     is_active: bool = True

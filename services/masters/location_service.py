@@ -4,6 +4,19 @@ from database.repository import BaseRepository
 from models.masters.location import Facility, Site
 
 class LocationService:
+    def get_facility_by_id(self, facility_id: int) -> Facility:
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM facilities WHERE id = ?", (facility_id,))
+            row = cursor.fetchone()
+            return Facility(**dict(row)) if row else None
+
+    def update_facility_allowed_vehicle_types(self, facility_id: int, allowed_types: str) -> bool:
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE facilities SET allowed_vehicle_types = ? WHERE id = ?", (allowed_types, facility_id))
+            conn.commit()
+            return cursor.rowcount > 0
     def __init__(self, db_manager: DatabaseManager):
         self.facility_repo = BaseRepository(db_manager, Facility, "facilities")
         self.site_repo = BaseRepository(db_manager, Site, "sites")

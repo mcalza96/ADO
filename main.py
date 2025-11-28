@@ -1,9 +1,12 @@
 import streamlit as st
 from ui.auth.login import login_page
 from ui.config_view import config_page
+from ui.masters.containers_view import containers_view
 from ui.requests_view import requests_page
 from ui.planning_view import planning_page
 from ui.operations.operations_view import operations_page
+from ui.disposal.operations import disposal_operations_page
+from ui.treatment.operations import treatment_operations_page
 from ui.operations.dashboard_view import dashboard_page
 
 # Page configuration
@@ -56,27 +59,51 @@ def main():
             st.write(f"User: **{user.username}** ({user.role})")
             st.divider()
             
-            menu = st.radio(
-                "Navegación",
-                ["Dashboard", "Solicitudes", "Planificación", "Operaciones", "Configuración"]
+            # Main Module Selection
+            module = st.selectbox(
+                "Módulo",
+                ["Dashboard", "Portal Clientes", "Transporte", "Disposición", "Tratamiento", "Configuración"]
             )
             
             st.divider()
+            
+            # Sub-navigation for Transporte
+            sub_menu = None
+            if module == "Transporte":
+                sub_menu = st.radio(
+                    "Gestión de Transporte",
+                    ["Planificación", "Operaciones"]
+                )
+            
             if st.button("Logout"):
                 st.session_state['user'] = None
                 st.rerun()
 
         # Main Content Area
-        if menu == "Dashboard":
+        if module == "Dashboard":
             dashboard_page()
-        elif menu == "Solicitudes":
+            
+        elif module == "Portal Clientes":
             requests_page()
-        elif menu == "Planificación":
-            planning_page()
-        elif menu == "Operaciones":
-            operations_page()
-        elif menu == "Configuración":
-            config_page()
+            
+        elif module == "Transporte":
+            if sub_menu == "Planificación":
+                planning_page()
+            elif sub_menu == "Operaciones":
+                operations_page()
+                
+        elif module == "Disposición":
+            disposal_operations_page()
+            
+        elif module == "Tratamiento":
+            treatment_operations_page()
+            
+        elif module == "Configuración":
+            tab_conf1, tab_conf2 = st.tabs(["General", "Contenedores"])
+            with tab_conf1:
+                config_page()
+            with tab_conf2:
+                containers_view()
 
 if __name__ == "__main__":
     run_migrations()
