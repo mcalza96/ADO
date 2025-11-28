@@ -59,3 +59,7 @@ class Load:
     created_by_user_id: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    
+    # Sync Support
+    sync_status: str = 'PENDING' # 'SYNCED', 'PENDING', 'ERROR'
+    last_updated_local: Optional[datetime] = None

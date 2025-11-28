@@ -13,3 +13,7 @@ class AgronomicException(DomainException):
 class LogisticsException(DomainException):
     """Raised when a logistics rule is violated (e.g. Overweight)."""
     pass
+
+class TransitionException(DomainException):
+    """Raised when an invalid state transition is attempted."""
+    pass

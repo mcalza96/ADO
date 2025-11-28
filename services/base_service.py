@@ -7,20 +7,5 @@ class BaseService:
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
 
-    def execute_query(self, query: str, params: tuple = ()) -> Optional[List[Any]]:
-        """
-        Executes a read query and returns the results.
-        """
-        with self.db_manager as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, params)
-            return cursor.fetchall()
+    # Methods execute_query and execute_non_query have been removed to enforce Repository Pattern usage.
 
-    def execute_non_query(self, query: str, params: tuple = ()) -> int:
-        """
-        Executes a write query (INSERT, UPDATE, DELETE) and returns the last row id or row count.
-        """
-        with self.db_manager as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, params)
-            return cursor.lastrowid

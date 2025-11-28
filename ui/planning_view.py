@@ -1,155 +1,227 @@
 import streamlit as st
+import pandas as pd
 import datetime
 from database.db_manager import DatabaseManager
-from services.operations_service import OperationsService
+from services.operations.logistics_service import LogisticsService
+from services.compliance.compliance_service import ComplianceService
+from repositories.site_repository import SiteRepository
+from repositories.load_repository import LoadRepository
 from services.masters.transport_service import TransportService
 from services.masters.location_service import LocationService
-from services.masters.disposal_service import DisposalService
 from services.masters.treatment_plant_service import TreatmentPlantService
 
 def planning_page():
-    st.title("🗓️ Planificación de Retiros")
-    
+    st.title("🗓️ Tablero de Planificación (Control Tower)")
+
+    # --- Dependency Injection ---
     db = DatabaseManager()
-    ops_service = OperationsService(db)
+    
+    # Repositories
+    site_repo = SiteRepository(db)
+    load_repo = LoadRepository(db)
+    
+    # Services
+    compliance_service = ComplianceService(site_repo, load_repo)
+    logistics_service = LogisticsService(db, compliance_service)
+    
     transport_service = TransportService(db)
     location_service = LocationService(db)
     treatment_plant_service = TreatmentPlantService(db)
-    
-    # 1. Fetch Requested Loads
-    requested_loads = ops_service.get_loads_by_status('Requested')
-    
-    if not requested_loads:
-        st.info("No hay solicitudes pendientes de planificación.")
-        return
-        
-    st.write(f"Pendientes: {len(requested_loads)}")
-    
-    # 2. Planning Interface
-    for load in requested_loads:
-        req_date_str = load.requested_date if load.requested_date else "Sin fecha"
-        # Resolve origin name (facility or treatment plant) to show readable text
-        if load.origin_facility_id:
-            fac = location_service.get_facility_by_id(load.origin_facility_id)
-            origin_name = fac.name if (fac and getattr(fac, 'name', None)) else f"ID: {load.origin_facility_id}"
-        elif load.origin_treatment_plant_id:
-            plant = treatment_plant_service.get_plant_by_id(load.origin_treatment_plant_id)
-            origin_name = plant.name if (plant and getattr(plant, 'name', None)) else f"Plant ID: {load.origin_treatment_plant_id}"
+
+    # --- Tabs ---
+    tab_backlog, tab_scheduled = st.tabs(["🔴 Por Planificar (Backlog)", "✅ Planificadas"])
+
+    # --- Tab 1: Backlog ---
+    with tab_backlog:
+        # Fetch Requested Loads
+        # Assuming get_by_status returns a list of Load objects
+        requested_loads = logistics_service.load_repo.get_by_status('Requested')
+
+        if not requested_loads:
+            st.info("No hay solicitudes pendientes de planificación.")
         else:
-            origin_name = "Origen desconocido"
-        with st.expander(f"Solicitud #{load.id} - Origen: {origin_name} - Para: {req_date_str}", expanded=True):
-            col1, col2, col3 = st.columns(3)
+            # Prepare Data for Grid
+            data = []
+            for load in requested_loads:
+                # Resolve Origin Name
+                if load.origin_facility_id:
+                    fac = location_service.get_facility_by_id(load.origin_facility_id)
+                    origin = fac.name if fac else f"Facility {load.origin_facility_id}"
+                elif load.origin_treatment_plant_id:
+                    plant = treatment_plant_service.get_plant_by_id(load.origin_treatment_plant_id)
+                    origin = plant.name if plant else f"Plant {load.origin_treatment_plant_id}"
+                else:
+                    origin = "Unknown"
+
+                data.append({
+                    "ID": load.id,
+                    "Fecha Solicitud": load.requested_date,
+                    "Origen": origin,
+                    "Volumen Est.": 20.0, # Placeholder or derived
+                    "Estado": load.status
+                })
             
-            with col1:
-                st.markdown("#### Transporte")
-                contractors = transport_service.get_all_contractors()
-                c_opts = {c.name: c.id for c in contractors}
-                sel_c = st.selectbox(f"Transportista #{load.id}", list(c_opts.keys()), key=f"c_{load.id}")
-                
-                sel_d = None
-                sel_v = None
-                container_qty = None
+            df = pd.DataFrame(data)
 
-                if sel_c:
-                    c_id = c_opts[sel_c]
-                    drivers = transport_service.get_drivers_by_contractor(c_id)
-                    d_opts = {d.name: d.id for d in drivers}
-                    sel_d = st.selectbox(f"Chofer #{load.id}", list(d_opts.keys()), key=f"d_{load.id}")
+            # Configure Columns
+            column_config = {
+                "ID": st.column_config.NumberColumn("ID", width="small"),
+                "Fecha Solicitud": st.column_config.DateColumn("Fecha Solicitud", format="DD/MM/YYYY"),
+                "Volumen Est.": st.column_config.NumberColumn("Volumen (tons)", format="%.1f"),
+            }
+
+            # Interactive Grid
+            st.markdown("### Selecciona cargas para asignar")
+            event = st.dataframe(
+                df,
+                use_container_width=True,
+                column_config=column_config,
+                hide_index=True,
+                on_select="rerun",
+                selection_mode="multi-row",
+                key="planning_grid"
+            )
+
+            selected_rows = event.selection.rows
+            
+            # --- Assignment Form (Sidebar) ---
+            if selected_rows:
+                selected_indices = selected_rows
+                # Get the actual IDs from the dataframe using the selected indices
+                # selected_rows returns a list of integer indices corresponding to the displayed dataframe
+                selected_ids = df.iloc[selected_indices]["ID"].tolist()
+                
+                st.sidebar.header(f"Asignando {len(selected_ids)} Cargas")
+                st.sidebar.markdown(f"**IDs Seleccionados:** {', '.join(map(str, selected_ids))}")
+                
+                with st.sidebar.form("assignment_form"):
+                    st.subheader("Recursos")
                     
-                    # Logic: Truck Type Selection
-                    # If Origin is Treatment Plant, force AMPLIROLL
-                    is_treatment_origin = load.origin_treatment_plant_id is not None
-                    allowed_truck_types = ["BATEA", "AMPLIROLL"]
-                    # Si la solicitud es de una planta de cliente (facility), filtrar tipos permitidos
-                    if load.origin_facility_id:
-                        fac = location_service.get_facility_by_id(load.origin_facility_id)
-                        if fac and fac.allowed_vehicle_types:
-                            allowed_truck_types = [t for t in fac.allowed_vehicle_types.split(',') if t in ["BATEA", "AMPLIROLL"]]
-                    if is_treatment_origin:
-                        # Force Ampliroll
-                        sel_truck_type = "AMPLIROLL"
-                        st.info("Origen Planta Tratamiento -> Requiere Camión AMPLIROLL")
+                    # 1. Contractor & Driver
+                    contractors = transport_service.get_all_contractors()
+                    c_opts = {c.name: c.id for c in contractors}
+                    sel_c = st.selectbox("Transportista", list(c_opts.keys()))
+                    
+                    driver_id = None
+                    vehicle_id = None
+                    
+                    if sel_c:
+                        c_id = c_opts[sel_c]
+                        drivers = transport_service.get_drivers_by_contractor(c_id)
+                        d_opts = {d.name: d.id for d in drivers}
+                        sel_d = st.selectbox("Conductor", list(d_opts.keys()))
+                        if sel_d: driver_id = d_opts[sel_d]
+                        
+                        vehicles = transport_service.get_vehicles_by_contractor(c_id)
+                        v_opts = {f"{v.license_plate} ({v.type})": v.id for v in vehicles}
+                        sel_v = st.selectbox("Vehículo", list(v_opts.keys()))
+                        if sel_v: vehicle_id = v_opts[sel_v]
+
+                    st.subheader("Programación")
+                    scheduled_date = st.date_input("Fecha Programada", value=datetime.date.today())
+                    scheduled_time = st.time_input("Hora", value=datetime.time(8, 0))
+                    
+                    st.subheader("Destino")
+                    # Simplified destination selection for bulk assignment
+                    # Ideally this should be smart based on origin, but for bulk we might assume same destination
+                    # or force user to pick one valid for all.
+                    dest_type = st.radio("Tipo Destino", ["Predio", "Planta"], horizontal=True)
+                    
+                    site_id = None
+                    plant_id = None
+                    
+                    if dest_type == "Predio":
+                        sites = location_service.get_all_sites()
+                        s_opts = {s.name: s.id for s in sites}
+                        sel_s = st.selectbox("Predio Destino", list(s_opts.keys()))
+                        if sel_s: site_id = s_opts[sel_s]
                     else:
-                        sel_truck_type = st.selectbox(f"Tipo de Camión #{load.id}", allowed_truck_types, key=f"tt_{load.id}")
+                        plants = treatment_plant_service.get_all_plants()
+                        p_opts = {p.name: p.id for p in plants}
+                        sel_p = st.selectbox("Planta Destino", list(p_opts.keys()))
+                        if sel_p: plant_id = p_opts[sel_p]
 
-                    # Filter vehicles by type
-                    all_vehicles = transport_service.get_vehicles_by_contractor(c_id)
-                    # Handle case where vehicle might not have type set (legacy data) - default to BATEA or show all?
-                    # Better to filter strictly if type is present.
-                    filtered_vehicles = [v for v in all_vehicles if getattr(v, 'type', 'BATEA') == sel_truck_type]
+                    container_qty = st.number_input("Contenedores (por carga)", min_value=1, value=1)
+
+                    submitted = st.form_submit_button("Confirmar Asignación")
                     
-                    if not filtered_vehicles:
-                        st.warning(f"No hay camiones tipo {sel_truck_type} para este transportista.")
-                        v_opts = {}
-                        sel_v = None
-                    else:
-                        v_opts = {f"{v.license_plate} ({v.max_capacity}t)": v.id for v in filtered_vehicles}
-                        sel_v = st.selectbox(f"Camión #{load.id}", list(v_opts.keys()), key=f"v_{load.id}")
-                    
-                    # If Ampliroll, ask for Container Count
-                    if sel_truck_type == "AMPLIROLL":
-                        container_qty = st.number_input(f"Cantidad Contenedores #{load.id}", min_value=1, value=1, step=1, key=f"cont_{load.id}")
-
-            with col2:
-                st.markdown("#### Destino y Fecha")
-                
-                # Logic: If Origin is Treatment Plant, Destination MUST be Site
-                is_treatment_origin = load.origin_treatment_plant_id is not None
-                
-                if is_treatment_origin:
-                    st.info("Origen: Planta Tratamiento -> Destino: Predio")
-                    dest_type = "Predio (Disposición)"
-                else:
-                    dest_type = st.radio("Tipo Destino", ["Predio (Disposición)", "Planta Tratamiento"], key=f"dtype_{load.id}", horizontal=True)
-                
-                sel_site_id = None
-                sel_plant_id = None
-                
-                if dest_type == "Predio (Disposición)":
-                    sites = location_service.get_all_sites()
-                    s_opts = {s.name: s.id for s in sites}
-                    sel_s = st.selectbox(f"Predio Destino #{load.id}", list(s_opts.keys()), key=f"s_{load.id}")
-                    if sel_s: sel_site_id = s_opts[sel_s]
-                else:
-                    plants = treatment_plant_service.get_all_plants()
-                    p_opts = {p.name: p.id for p in plants}
-                    sel_p = st.selectbox(f"Planta Tratamiento #{load.id}", list(p_opts.keys()), key=f"p_{load.id}")
-                    if sel_p: sel_plant_id = p_opts[sel_p]
-                
-                # Date Planning
-                # Handle both datetime and date objects safely
-                if isinstance(load.requested_date, datetime.datetime):
-                    default_date = load.requested_date.date()
-                elif isinstance(load.requested_date, datetime.date):
-                    default_date = load.requested_date
-                else:
-                    default_date = datetime.date.today()
-
-                plan_date = st.date_input(f"Fecha Programada #{load.id}", value=default_date, key=f"pd_{load.id}")
-                plan_time = st.time_input(f"Hora Programada #{load.id}", value=datetime.time(8, 0), key=f"pt_{load.id}")
-
-            with col3:
-                st.markdown("#### Acción")
-                st.write("") # Spacer
-                st.write("")
-                if st.button(f"Asignar y Programar", key=f"btn_{load.id}"):
-                    if sel_d and sel_v and (sel_site_id or sel_plant_id):
-                        try:
-                            # Combine Date and Time
-                            scheduled_dt = datetime.datetime.combine(plan_date, plan_time)
+                    if submitted:
+                        if not driver_id or not vehicle_id or (not site_id and not plant_id):
+                            st.error("Por favor complete todos los campos requeridos.")
+                        else:
+                            success_count = 0
+                            errors = []
                             
-                            ops_service.assign_resources(
-                                load_id=load.id,
-                                driver_id=d_opts[sel_d],
-                                vehicle_id=v_opts[sel_v],
-                                scheduled_date=scheduled_dt,
-                                site_id=sel_site_id,
-                                treatment_plant_id=sel_plant_id,
-                                container_quantity=container_qty
-                            )
-                            st.success(f"Solicitud #{load.id} programada exitosamente para {scheduled_dt}.")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Error: {e}")
-                    else:
-                        st.warning("Complete todos los campos.")
+                            full_date = datetime.datetime.combine(scheduled_date, scheduled_time)
+                            
+                            progress_bar = st.progress(0)
+                            
+                            for idx, load_id in enumerate(selected_ids):
+                                try:
+                                    logistics_service.schedule_load(
+                                        load_id=load_id,
+                                        driver_id=driver_id,
+                                        vehicle_id=vehicle_id,
+                                        scheduled_date=full_date,
+                                        site_id=site_id,
+                                        treatment_plant_id=plant_id,
+                                        container_quantity=container_qty
+                                    )
+                                    success_count += 1
+                                except Exception as e:
+                                    errors.append(f"Load {load_id}: {str(e)}")
+                                
+                                progress_bar.progress((idx + 1) / len(selected_ids))
+                            
+                            if success_count > 0:
+                                st.success(f"Se asignaron {success_count} cargas exitosamente.")
+                            
+                            if errors:
+                                st.error(f"Hubo {len(errors)} errores:")
+                                for err in errors:
+                                    st.write(err)
+                                    
+                            if success_count == len(selected_ids):
+                                st.rerun()
+
+            else:
+                st.info("👆 Selecciona una o más cargas en la tabla para habilitar el panel de asignación.")
+
+    # --- Tab 2: Scheduled ---
+    with tab_scheduled:
+        scheduled_loads = logistics_service.load_repo.get_by_status('Scheduled')
+        if not scheduled_loads:
+            st.info("No hay cargas programadas.")
+        else:
+            s_data = []
+            for load in scheduled_loads:
+                # Resolve Origin
+                if load.origin_facility_id:
+                    fac = location_service.get_facility_by_id(load.origin_facility_id)
+                    origin = fac.name if fac else str(load.origin_facility_id)
+                else:
+                    plant = treatment_plant_service.get_plant_by_id(load.origin_treatment_plant_id)
+                    origin = plant.name if plant else str(load.origin_treatment_plant_id)
+                
+                # Resolve Driver/Vehicle
+                driver = transport_service.get_driver_by_id(load.driver_id)
+                vehicle = transport_service.get_vehicle_by_id(load.vehicle_id)
+                
+                s_data.append({
+                    "ID": load.id,
+                    "Fecha Programada": load.scheduled_date,
+                    "Origen": origin,
+                    "Conductor": driver.name if driver else "N/A",
+                    "Vehículo": vehicle.license_plate if vehicle else "N/A",
+                    "Destino ID": load.destination_site_id if load.destination_site_id else load.destination_treatment_plant_id
+                })
+            
+            df_scheduled = pd.DataFrame(s_data)
+            st.dataframe(
+                df_scheduled,
+                use_container_width=True,
+                column_config={
+                    "Fecha Programada": st.column_config.DatetimeColumn("Fecha Programada", format="DD/MM/YYYY HH:mm"),
+                },
+                hide_index=True
+            )

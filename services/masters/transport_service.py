@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from database.db_manager import DatabaseManager
 from database.repository import BaseRepository
 from models.masters.transport import Contractor, Driver, Vehicle
@@ -29,6 +29,9 @@ class TransportService:
     def create_driver(self, driver: Driver) -> Driver:
         return self.driver_repo.add(driver)
 
+    def get_driver_by_id(self, driver_id: int) -> Optional[Driver]:
+        return self.driver_repo.get_by_id(driver_id)
+
     # --- Vehicles ---
     def get_vehicles_by_contractor(self, contractor_id: int) -> List[Vehicle]:
         with self.db_manager as conn:
@@ -39,3 +42,6 @@ class TransportService:
 
     def create_vehicle(self, vehicle: Vehicle) -> Vehicle:
         return self.vehicle_repo.add(vehicle)
+
+    def get_vehicle_by_id(self, vehicle_id: int) -> Optional[Vehicle]:
+        return self.vehicle_repo.get_by_id(vehicle_id)
