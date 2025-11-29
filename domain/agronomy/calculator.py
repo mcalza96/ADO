@@ -1,19 +1,12 @@
 from domain.dtos import NutrientAnalysisDTO, ApplicationScenarioDTO
 from domain.exceptions import AgronomicException
+from domain.constants import K_MIN_DEFAULTS, UNIT_CONVERSION_FACTOR
 
 class AgronomyCalculator:
     """
     Domain Service for Agronomic Calculations (EPA 503).
     """
     
-    # Mineralization Rates (Kmin) - Simplified defaults
-    K_MIN_DEFAULTS = {
-        'Compost': 0.10,
-        'Anaerobic_Digestion': 0.20,
-        'Aerobic_Digestion': 0.30,
-        'Raw': 0.30
-    }
-
     @staticmethod
     def calculate_pan(analysis: NutrientAnalysisDTO, scenario: ApplicationScenarioDTO, sludge_type: str = 'Anaerobic_Digestion') -> float:
         """
@@ -26,7 +19,7 @@ class AgronomyCalculator:
         k_vol = 1.0 if scenario.injection_method else 0.7
         
         # Kmin: Mineralization factor based on sludge type
-        k_min = AgronomyCalculator.K_MIN_DEFAULTS.get(sludge_type, 0.20)
+        k_min = K_MIN_DEFAULTS.get(sludge_type, 0.20)
 
         # 2. Calculate Organic Nitrogen
         # Norg = TKN - NH4
@@ -37,9 +30,9 @@ class AgronomyCalculator:
         # If inputs were %, factor would be 20.
         # Let's stick to the prompt's formula structure implying mg/kg inputs.
         
-        term_no3 = analysis.nitrate_no3 * 0.002
-        term_nh4 = k_vol * (analysis.ammonium_nh4 * 0.002)
-        term_norg = k_min * (n_org * 0.002)
+        term_no3 = analysis.nitrate_no3 * UNIT_CONVERSION_FACTOR
+        term_nh4 = k_vol * (analysis.ammonium_nh4 * UNIT_CONVERSION_FACTOR)
+        term_norg = k_min * (n_org * UNIT_CONVERSION_FACTOR)
         
         pan = term_no3 + term_nh4 + term_norg
         return pan

@@ -42,3 +42,13 @@ class LoadRepository(BaseRepository[Load]):
             cursor.execute(f"SELECT * FROM {self.table_name} WHERE destination_site_id = ? AND status = ?", (destination_site_id, status))
             rows = cursor.fetchall()
             return [self.model_cls(**dict(row)) for row in rows]
+
+    def get_pending_disposal_by_site(self, site_id: int) -> List[Load]:
+        """
+        Returns loads that are PendingDisposal at the given site.
+        """
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            cursor.execute(f"SELECT * FROM {self.table_name} WHERE destination_site_id = ? AND status = 'PendingDisposal'", (site_id,))
+            rows = cursor.fetchall()
+            return [self.model_cls(**dict(row)) for row in rows]

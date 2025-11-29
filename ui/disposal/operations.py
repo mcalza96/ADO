@@ -1,18 +1,15 @@
 import streamlit as st
-from database.db_manager import DatabaseManager
-from services.masters.location_service import LocationService
-from services.operations.disposal_execution import DisposalExecutionService
 import datetime
+from container import get_container
 
 def disposal_operations_page():
     st.title("🏔️ Operaciones de Disposición")
     
-    db = DatabaseManager()
-    loc_service = LocationService(db)
-    disp_service = DisposalExecutionService(db)
+    # Get services from dependency injection container
+    services = get_container()
     
     # 1. Context Selection (Site)
-    sites = loc_service.get_all_sites()
+    sites = services.location_service.get_all_sites()
     if not sites:
         st.warning("No hay predios configurados.")
         return
@@ -46,13 +43,15 @@ def disposal_operations_page():
             
             if st.form_submit_button("Registrar Labor"):
                 try:
-                    disp_service.register_site_event(site_id, evt_type, datetime.datetime.combine(evt_date, datetime.time(0,0)), evt_desc)
+                    services.disposal_service.register_site_event(site_id, evt_type, datetime.datetime.combine(evt_date, datetime.time(0,0)), evt_desc)
                     st.success("Labor registrada correctamente.")
+                except ValueError as e:
+                    st.error(f"Error de validación: {e}")
                 except Exception as e:
-                    st.error(f"Error: {e}")
+                    st.error(f"Error inesperado: {e}")
         
         st.markdown("### Historial de Labores")
-        events = disp_service.get_site_events(site_id)
+        events = services.disposal_service.get_site_events(site_id)
         # Filter for prep events if needed, or show all
         if events:
             for evt in events:
@@ -68,7 +67,7 @@ def disposal_operations_page():
         if st.button("🔄 Actualizar Bandeja"):
             st.rerun()
             
-        pending = disp_service.get_pending_disposal_loads(site_id)
+        pending = services.disposal_service.get_pending_disposal_loads(site_id)
         
         if not pending:
             st.info("No hay cargas pendientes de incorporación. (Esperando descargas de transporte...)")
@@ -100,11 +99,13 @@ def disposal_operations_page():
                         try:
                             # We can append method to description or coordinates for now
                             final_coords = f"{gps_coords} | {method}"
-                            disp_service.execute_disposal(load.id, final_coords)
+                            services.disposal_service.execute_disposal(load.id, final_coords)
                             st.success(f"Carga #{load.id} dispuesta e incorporada exitosamente.")
                             st.rerun()
+                        except ValueError as e:
+                            st.error(f"Error de validación: {e}")
                         except Exception as e:
-                            st.error(f"Error: {e}")
+                            st.error(f"Error inesperado: {e}")
 
     # --- TAB 3: CLOSURE (DO-17, DO-21) ---
     with tab_close:
@@ -122,8 +123,10 @@ def disposal_operations_page():
             if st.form_submit_button("🔒 Registrar Cierre"):
                 try:
                     desc = f"Responsable: {responsible} | Paño: {check_sector} | Faena: {check_day} | Obs: {obs}"
-                    disp_service.register_site_event(site_id, "Cierre Operativo", datetime.datetime.combine(c_date, datetime.time(23,59)), desc)
+                    services.disposal_service.register_site_event(site_id, "Cierre Operativo", datetime.datetime.combine(c_date, datetime.time(23,59)), desc)
                     st.success("Cierre operativo registrado correctamente.")
+                except ValueError as e:
+                    st.error(f"Error de validación: {e}")
                 except Exception as e:
-                    st.error(f"Error: {e}")
+                    st.error(f"Error inesperado: {e}")
 

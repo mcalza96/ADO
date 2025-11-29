@@ -63,3 +63,26 @@ class Load:
     # Sync Support
     sync_status: str = 'PENDING' # 'SYNCED', 'PENDING', 'ERROR'
     last_updated_local: Optional[datetime] = None
+    
+    # --- Business Logic Methods ---
+    def complete_disposal(self, coordinates: str, treatment_facility_id: Optional[int] = None) -> None:
+        """
+        Execute disposal of the load, transitioning from PendingDisposal to Disposed.
+        
+        Args:
+            coordinates: GPS coordinates of the disposal location
+            treatment_facility_id: Optional ID of the treatment facility
+            
+        Raises:
+            ValueError: If load is not in PendingDisposal status
+        """
+        # Validation: Verify current state
+        if self.status != 'PendingDisposal':
+            raise ValueError(f"Load must be PendingDisposal to execute disposal. Current: {self.status}")
+        
+        # State Transition: Update status and disposal properties
+        self.status = 'Disposed'
+        self.disposal_time = datetime.now()
+        self.disposal_coordinates = coordinates
+        if treatment_facility_id is not None:
+            self.treatment_facility_id = treatment_facility_id

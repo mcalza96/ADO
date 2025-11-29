@@ -15,30 +15,16 @@ class ComplianceValidator:
         """
         violations = []
         
-        # Check each metal
-        if analysis.arsenic > EPA_CEILING_LIMITS['arsenic']:
-            violations.append(f"Arsenic ({analysis.arsenic}) exceeds limit ({EPA_CEILING_LIMITS['arsenic']})")
+        # Check each metal dynamically
+        for metal, limit in EPA_CEILING_LIMITS.items():
+            # Get the value from the DTO using getattr. 
+            # We assume the DTO fields match the keys in EPA_CEILING_LIMITS (lowercase).
+            # If DTO fields are different, we might need a mapping.
+            # Based on previous code: 'arsenic', 'cadmium', etc. match DTO fields.
+            value = getattr(analysis, metal, None)
             
-        if analysis.cadmium > EPA_CEILING_LIMITS['cadmium']:
-            violations.append(f"Cadmium ({analysis.cadmium}) exceeds limit ({EPA_CEILING_LIMITS['cadmium']})")
-            
-        if analysis.copper > EPA_CEILING_LIMITS['copper']:
-            violations.append(f"Copper ({analysis.copper}) exceeds limit ({EPA_CEILING_LIMITS['copper']})")
-            
-        if analysis.lead > EPA_CEILING_LIMITS['lead']:
-            violations.append(f"Lead ({analysis.lead}) exceeds limit ({EPA_CEILING_LIMITS['lead']})")
-            
-        if analysis.mercury > EPA_CEILING_LIMITS['mercury']:
-            violations.append(f"Mercury ({analysis.mercury}) exceeds limit ({EPA_CEILING_LIMITS['mercury']})")
-            
-        if analysis.nickel > EPA_CEILING_LIMITS['nickel']:
-            violations.append(f"Nickel ({analysis.nickel}) exceeds limit ({EPA_CEILING_LIMITS['nickel']})")
-            
-        if analysis.selenium > EPA_CEILING_LIMITS['selenium']:
-            violations.append(f"Selenium ({analysis.selenium}) exceeds limit ({EPA_CEILING_LIMITS['selenium']})")
-            
-        if analysis.zinc > EPA_CEILING_LIMITS['zinc']:
-            violations.append(f"Zinc ({analysis.zinc}) exceeds limit ({EPA_CEILING_LIMITS['zinc']})")
+            if value is not None and value > limit:
+                violations.append(f"{metal.capitalize()} ({value}) exceeds limit ({limit})")
 
         if violations:
             raise ComplianceException("Heavy Metal Ceiling Concentration Exceeded: " + "; ".join(violations))

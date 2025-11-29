@@ -5,7 +5,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Database configuration
 DB_NAME = "biosolids.db"
-DB_PATH = os.path.join(BASE_DIR, "database", DB_NAME)
+DB_PATH = os.getenv('DB_PATH', os.path.join(BASE_DIR, "database", DB_NAME))
 
 # Application settings
 APP_NAME = "Biosolids Management ERP"

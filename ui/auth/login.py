@@ -1,6 +1,5 @@
 import streamlit as st
-from services.auth_service import AuthService
-from database.db_manager import DatabaseManager
+from container import get_container
 
 def login_page():
     st.title("Biosolids ERP - Login")
@@ -11,9 +10,8 @@ def login_page():
         submitted = st.form_submit_button("Login")
         
         if submitted:
-            db = DatabaseManager()
-            auth_service = AuthService(db)
-            user = auth_service.authenticate(username, password)
+            services = get_container()
+            user = services.auth_service.authenticate(username, password)
             
             if user:
                 st.session_state['user'] = user

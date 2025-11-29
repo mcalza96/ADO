@@ -3,13 +3,15 @@ import os
 from contextlib import contextmanager
 from typing import Optional, List, Dict, Any, Generator
 
+from config.settings import DB_PATH
+
 class DatabaseManager:
     """
     Manages SQLite database connections and transactions using the Context Manager pattern.
     Ensures foreign keys are enabled and WAL mode is active.
     """
 
-    def __init__(self, db_path: str = "database/biosolids.db"):
+    def __init__(self, db_path: str = DB_PATH):
         """
         Initialize the DatabaseManager.
         
@@ -62,7 +64,7 @@ class DatabaseManager:
             self.connection = None
 
     @staticmethod
-    def initialize_db(schema_path: str = "database/schema.sql", db_path: str = "database/biosolids.db"):
+    def initialize_db(schema_path: str = "database/schema.sql", db_path: str = DB_PATH):
         """
         Initialize the database structure from the schema file.
         """

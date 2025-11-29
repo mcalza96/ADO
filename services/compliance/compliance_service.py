@@ -4,21 +4,12 @@ from repositories.load_repository import LoadRepository
 from domain.agronomy.calculator import AgronomyCalculator
 from domain.dtos import NutrientAnalysisDTO, ApplicationScenarioDTO
 from domain.exceptions import AgronomicException, ComplianceException
+from domain.constants import CROP_REQUIREMENTS
 
 class ComplianceService:
     """
     Orchestrates agronomic and environmental compliance validations.
     """
-    
-    # Placeholder for Crop Nitrogen Requirements (e.g., lbs/acre or kg/ha)
-    # Assuming units match the output of AgronomyCalculator (e.g., lbs/acre)
-    CROP_REQUIREMENTS = {
-        'Corn': 200.0,
-        'Wheat': 150.0,
-        'Soybean': 0.0, # Legume, fixes own N
-        'Hay': 100.0,
-        'Pasture': 80.0
-    }
 
     def __init__(self, site_repo: SiteRepository, load_repo: LoadRepository):
         self.site_repo = site_repo
@@ -50,7 +41,7 @@ class ComplianceService:
              raise AgronomicException(f"Invalid batch analysis data: {str(e)}")
 
         # 4. Determine Crop Requirement (Moved up)
-        crop_req = self.CROP_REQUIREMENTS.get(plot.crop_type, 150.0) # Default to 150 if unknown
+        crop_req = CROP_REQUIREMENTS.get(plot.crop_type, 150.0) # Default to 150 if unknown
 
         # Default scenario for now (could be passed in if needed)
         scenario_dto = ApplicationScenarioDTO(
