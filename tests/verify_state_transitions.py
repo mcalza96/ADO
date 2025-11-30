@@ -9,7 +9,7 @@ sys.path.append(os.getcwd())
 from models.operations.load import Load
 from services.operations.logistics_service import LogisticsService
 from services.operations.dispatch_service import DispatchService
-from services.operations.reception_service import ReceptionService
+from services.operations.disposal_execution import DisposalExecutionService
 from domain.exceptions import TransitionException
 
 def test_state_transitions():
@@ -23,7 +23,7 @@ def test_state_transitions():
     # Instantiate Services
     logistics_service = LogisticsService(mock_db, mock_compliance)
     dispatch_service = DispatchService(mock_db, mock_batch_service)
-    reception_service = ReceptionService(mock_db)
+    disposal_service = DisposalExecutionService(mock_db)
     
     # Mock Repository methods
     # We need to mock the repository inside the services. 
@@ -35,7 +35,7 @@ def test_state_transitions():
     mock_repo = MagicMock()
     logistics_service.load_repo = mock_repo
     dispatch_service.load_repo = mock_repo
-    reception_service.load_repo = mock_repo
+    disposal_service.load_repo = mock_repo
     
     # 1. Create Initial Load
     load = Load(id=1, status='Requested', requested_date=datetime.now())
@@ -64,14 +64,14 @@ def test_state_transitions():
     
     # 4. Register Arrival (In Transit -> PendingDisposal)
     print("\nTesting: In Transit -> PendingDisposal")
-    reception_service.register_arrival(load_id=1)
+    disposal_service.register_arrival(load_id=1)
     assert load.status == 'PendingDisposal', f"Failed: Status is {load.status}"
     assert load.sync_status == 'PENDING', "Failed: sync_status not PENDING"
     print("SUCCESS: PendingDisposal")
     
     # 5. Execute Disposal (PendingDisposal -> Disposed)
     print("\nTesting: PendingDisposal -> Disposed")
-    reception_service.execute_disposal(load_id=1, coordinates="10.0, -20.0")
+    disposal_service.execute_disposal(load_id=1, coordinates="10.0, -20.0")
     assert load.status == 'Disposed', f"Failed: Status is {load.status}"
     assert load.sync_status == 'PENDING', "Failed: sync_status not PENDING"
     print("SUCCESS: Disposed")

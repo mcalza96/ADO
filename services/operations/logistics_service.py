@@ -53,31 +53,13 @@ class LogisticsService:
             raise TransitionException(f"Cannot schedule load. Current status: {load.status}. Expected: 'Requested'.")
         
         # Validation Logic for Sites
+        # NOTE: Agronomic compliance validation is performed at Dispatch time (not at Planning/Schedule time)
+        # because we don't have batch_id yet at this stage.
+        # See DispatchService.dispatch_truck() which calls compliance_service.validate_dispatch()
         if site_id:
-            # TODO: Fetch real analysis from Lab module (LIMS)
-            # Using mock analysis for now as per instructions
-            mock_analysis = {
-                'nitrate_no3': 10.0,
-                'ammonium_nh4': 500.0,
-                'tkn': 2500.0,
-                'percent_solids': 20.0,
-                'phosphorus_p': 100.0,
-                'potassium_k': 50.0
-            }
-            
-            # Estimate volume in tons. 
-            # Assuming 20 tons per container if not specified, or derived from container_quantity.
-            # Ideally this comes from Vehicle capacity or Load estimation.
-            qty = container_quantity if container_quantity else 1
-            estimated_volume_tons = qty * 20.0 
-            
-            # Validate Agronomic Compliance
-            # This will raise AgronomicException or ComplianceException if it fails
-            self.compliance_service.validate_application_feasibility(
-                site_id=site_id,
-                volume_tons=estimated_volume_tons,
-                batch_analysis=mock_analysis
-            )
+            # Basic validation: Site must exist
+            # The detailed agronomic validation will happen at dispatch time when batch is known
+            pass
         
         load.driver_id = driver_id
         load.vehicle_id = vehicle_id

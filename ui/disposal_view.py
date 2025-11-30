@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional
 
 from database.db_manager import DatabaseManager
-from services.operations.reception_service import ReceptionService
+from services.operations.disposal_execution import DisposalExecutionService
 from services.masters.location_service import LocationService
 from services.masters.transport_service import TransportService
 from services.masters.treatment_plant_service import TreatmentPlantService
@@ -16,7 +16,7 @@ def disposal_page():
     # --- Dependency Injection ---
     # In a real app, this might be handled by a container
     db = DatabaseManager()
-    reception_service = ReceptionService(db)
+    disposal_service = DisposalExecutionService(db)
     location_service = LocationService(db)
     transport_service = TransportService(db)
     treatment_plant_service = TreatmentPlantService(db)
@@ -44,7 +44,7 @@ def disposal_page():
     # --- Pending Loads Table ---
     st.subheader("🚛 Cargas en Arribo / Pendientes")
     
-    pending_loads = reception_service.get_pending_disposal_loads(current_site_id)
+    pending_loads = disposal_service.get_pending_disposal_loads(current_site_id)
     
     if not pending_loads:
         st.info("No hay cargas pendientes de disposición en este sitio.")
@@ -168,7 +168,7 @@ def disposal_page():
                 if submitted:
                     if check_buffers and check_weather and check_soil:
                         try:
-                            reception_service.execute_disposal(
+                            disposal_service.execute_disposal(
                                 load_id=int(selected_load_id),
                                 coordinates=coords_str
                             )

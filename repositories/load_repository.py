@@ -90,3 +90,53 @@ class LoadRepository(BaseRepository[Load]):
             cursor.execute(f"SELECT * FROM {self.table_name} WHERE status = 'InTransit' ORDER BY dispatch_time DESC")
             rows = cursor.fetchall()
             return [self.model_cls(**dict(row)) for row in rows]
+    
+    def get_active_loads_by_vehicle(self, vehicle_id: int) -> List[Load]:
+        """
+        Returns active loads assigned to a specific vehicle.
+        Active loads are those with status: 'Requested', 'Scheduled', or 'Dispatched'.
+        Ordered by scheduled_date DESC (most recent first).
+        
+        Args:
+            vehicle_id: ID of the vehicle
+            
+        Returns:
+            List of active loads assigned to the vehicle
+        """
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"SELECT * FROM {self.table_name} "
+                f"WHERE vehicle_id = ? AND status IN ('Requested', 'Scheduled', 'Dispatched') "
+                f"ORDER BY scheduled_date DESC",
+                (vehicle_id,)
+            )
+            rows = cursor.fetchall()
+            return [self.model_cls(**dict(row)) for row in rows]
+
+    def get_delivered_by_destination_type(self, destination_type: str, destination_id: int) -> List[Load]:
+        """
+        Returns loads that are 'Delivered' and waiting for the next stage (Disposal or Treatment).
+        
+        Args:
+            destination_type: 'DisposalSite' or 'TreatmentPlant'
+            destination_id: ID of the destination site or plant
+            
+        Returns:
+            List of Delivered loads at the specified destination
+        """
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            
+            if destination_type == 'DisposalSite':
+                query = f"SELECT * FROM {self.table_name} WHERE status = 'Delivered' AND destination_site_id = ? ORDER BY arrival_time DESC"
+                params = (destination_id,)
+            elif destination_type == 'TreatmentPlant':
+                query = f"SELECT * FROM {self.table_name} WHERE status = 'Delivered' AND destination_treatment_plant_id = ? ORDER BY arrival_time DESC"
+                params = (destination_id,)
+            else:
+                return []
+                
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            return [self.model_cls(**dict(row)) for row in rows]

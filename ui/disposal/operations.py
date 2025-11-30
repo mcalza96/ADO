@@ -6,25 +6,202 @@ def disposal_operations_page():
     st.title("🏔️ Operaciones de Disposición")
     
     # Get services from dependency injection container
-    services = get_container()
+    try:
+        services = get_container()
+    except Exception as e:
+        st.error(f"Error al inicializar servicios: {e}")
+        return
     
     # 1. Context Selection (Site)
-    sites = services.location_service.get_all_sites()
+    try:
+        sites = services.location_service.get_all_sites()
+    except Exception as e:
+        st.error(f"Error al cargar predios: {e}")
+        return
+        
     if not sites:
         st.warning("No hay predios configurados.")
         return
         
     s_opts = {s.name: s.id for s in sites}
-    sel_site_name = st.selectbox("Seleccione Predio de Trabajo", list(s_opts.keys()))
+    sel_site_name = st.selectbox("📍 Seleccione Predio de Trabajo", list(s_opts.keys()))
     site_id = s_opts[sel_site_name]
     
     st.divider()
     
-    tab_prep, tab_exec, tab_close = st.tabs(["🚜 Preparación (Pre-Disposición)", "✅ Ejecución (Disposición)", "🏁 Cierre de Faena"])
+    # Main Operational Tabs: Reception and Disposal
+    tab_reception, tab_disposal, tab_prep, tab_close = st.tabs([
+        "🚛 1. Recepción (Portería)", 
+        "🚜 2. Disposición (Campo)",
+        "🔧 Preparación",
+        "🏁 Cierre"
+    ])
     
-    # --- TAB 1: PREPARATION ---
+    # ============================================
+    # TAB 1: RECEPTION (Portería/Báscula) 
+    # ============================================
+    with tab_reception:
+        st.subheader("🚛 Recepción en Portería/Báscula")
+        st.markdown("**Rol:** Operario de Báscula | **Acción:** Registrar llegada y pesaje")
+        
+        # Auto-refresh button
+        if st.button("🔄 Actualizar Cargas en Ruta", key="refresh_reception"):
+            st.rerun()
+        
+        st.divider()
+        
+        # Get loads with status='Dispatched' (En Ruta)
+        try:
+            from repositories.load_repository import LoadRepository
+            load_repo = LoadRepository(services.db_manager)
+            dispatched_loads = load_repo.get_by_status('Dispatched')
+            
+            # Filter by destination site
+            dispatched_loads = [l for l in dispatched_loads if l.destination_site_id == site_id]
+            
+        except Exception as e:
+            st.error(f"Error al cargar cargas despachadas: {e}")
+            dispatched_loads = []
+        
+        if not dispatched_loads:
+            st.info("✅ No hay cargas en ruta hacia este predio.")
+        else:
+            st.success(f"📦 Hay {len(dispatched_loads)} carga(s) en ruta esperando recepción.")
+            
+            for load in dispatched_loads:
+                with st.expander(f"🚛 Carga #{load.id} - Guía: {load.guide_number or 'S/N'} - Peso Neto Estimado: {load.weight_net or 'N/A'} kg", expanded=True):
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        st.markdown(f"**Ticket:** {load.ticket_number or 'N/A'}")
+                        st.markdown(f"**Despacho:** {load.dispatch_time or 'N/A'}")
+                    with c2:
+                        st.markdown(f"**Conductor ID:** {load.driver_id or 'N/A'}")
+                        st.markdown(f"**Vehículo ID:** {load.vehicle_id or 'N/A'}")
+                    with c3:
+                        st.markdown(f"**Estado:** `{load.status}`")
+                        st.markdown(f"**Batch ID:** {load.batch_id or 'N/A'}")
+                    
+                    st.divider()
+                    st.markdown("#### 📊 Registro de Ingreso (Pesaje)")
+                    
+                    with st.form(f"reception_form_{load.id}"):
+                        r_col1, r_col2 = st.columns(2)
+                        with r_col1:
+                            weight_arrival = st.number_input(
+                                "⚖️ Peso en Báscula (kg)", 
+                                min_value=0.0, 
+                                step=10.0, 
+                                value=float(load.weight_net or 0.0),
+                                key=f"weight_{load.id}"
+                            )
+                        with r_col2:
+                            observation = st.text_area(
+                                "📝 Observaciones de Calidad",
+                                placeholder="Ej: Olor normal, consistencia adecuada...",
+                                key=f"obs_{load.id}"
+                            )
+                        
+                        submitted = st.form_submit_button("✅ Registrar Ingreso")
+                        
+                        if submitted:
+                            try:
+                                services.disposal_service.register_arrival(
+                                    load_id=load.id,
+                                    weight=weight_arrival,
+                                    observation=observation if observation else None
+                                )
+                                st.success(f"✅ Carga #{load.id} recepcionada exitosamente. Ahora está disponible para disposición.")
+                                st.rerun()
+                            except ValueError as e:
+                                st.error(f"❌ Error de validación: {e}")
+                            except Exception as e:
+                                st.error(f"❌ Error inesperado: {e}")
+
+    # ============================================
+    # TAB 2: DISPOSAL (Campo/Tractorista)
+    # ============================================
+    with tab_disposal:
+        st.subheader("🚜 Disposición en Campo")
+        st.markdown("**Rol:** Tractorista/Operador de Campo | **Acción:** Incorporar carga al suelo")
+        
+        # Auto-refresh button
+        if st.button("🔄 Actualizar Cargas Disponibles", key="refresh_disposal"):
+            st.rerun()
+        
+        st.divider()
+        
+        # Get loads ready for disposal (Status: Delivered)
+        try:
+            # Use the service method which now fetches 'Delivered' loads
+            arrived_loads = services.disposal_service.get_pending_disposal_loads(site_id)
+            
+        except Exception as e:
+            st.error(f"Error al cargar cargas para disposición: {e}")
+            arrived_loads = []
+            
+        except Exception as e:
+            st.error(f"Error al cargar cargas recepcionadas: {e}")
+            arrived_loads = []
+        
+        if not arrived_loads:
+            st.info("✅ No hay cargas recepcionadas pendientes de incorporación.")
+        else:
+            st.success(f"📦 Hay {len(arrived_loads)} carga(s) lista(s) para incorporar al suelo.")
+            
+            for load in arrived_loads:
+                with st.expander(f"🚛 Carga #{load.id} - Guía: {load.guide_number or 'S/N'} - Peso Real: {load.weight_gross_reception or load.weight_net or 'N/A'} kg", expanded=True):
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        st.markdown(f"**Ticket:** {load.ticket_number or 'N/A'}")
+                        st.markdown(f"**Llegada:** {load.arrival_time or 'N/A'}")
+                    with c2:
+                        st.markdown(f"**Peso Báscula:** {load.weight_gross_reception or 'N/A'} kg")
+                        st.markdown(f"**Batch ID:** {load.batch_id or 'N/A'}")
+                    with c3:
+                        st.markdown(f"**Estado:** `{load.status}`")
+                        st.markdown(f"**Obs. Recepción:** {load.reception_observations or 'N/A'}")
+                    
+                    st.divider()
+                    st.markdown("#### 🌾 Confirmación de Incorporación")
+                    
+                    with st.form(f"disposal_form_{load.id}"):
+                        d_col1, d_col2 = st.columns(2)
+                        with d_col1:
+                            gps_coords = st.text_input(
+                                "📍 Coordenadas GPS de Incorporación", 
+                                value="-33.456, -70.657",
+                                placeholder="Latitud, Longitud",
+                                key=f"gps_{load.id}"
+                            )
+                        with d_col2:
+                            method = st.selectbox(
+                                "🚜 Método de Aplicación", 
+                                ["Inyección Directa", "Incorporación Mecánica", "Superficial"],
+                                key=f"method_{load.id}"
+                            )
+                        
+                        submitted = st.form_submit_button("✅ Confirmar Incorporación")
+                        
+                        if submitted:
+                            try:
+                                # Combine coordinates and method for now
+                                final_coords = f"{gps_coords} | {method}"
+                                services.disposal_service.execute_disposal(
+                                    load_id=load.id,
+                                    coordinates=final_coords
+                                )
+                                st.success(f"✅ Carga #{load.id} incorporada exitosamente al suelo.")
+                                st.rerun()
+                            except ValueError as e:
+                                st.error(f"❌ Error de validación: {e}")
+                            except Exception as e:
+                                st.error(f"❌ Error inesperado: {e}")
+
+    # ============================================
+    # TAB 3: PREPARATION (Labores Previas)
+    # ============================================
     with tab_prep:
-        st.subheader("Registro de Labores Previas (DO-06 a DO-16)")
+        st.subheader("🔧 Registro de Labores Previas (DO-06 a DO-16)")
         
         with st.form("site_event_form"):
             col1, col2 = st.columns(2)
@@ -41,75 +218,38 @@ def disposal_operations_page():
             with col2:
                 evt_desc = st.text_area("Descripción / Observaciones")
             
-            if st.form_submit_button("Registrar Labor"):
+            if st.form_submit_button("📝 Registrar Labor"):
                 try:
-                    services.disposal_service.register_site_event(site_id, evt_type, datetime.datetime.combine(evt_date, datetime.time(0,0)), evt_desc)
-                    st.success("Labor registrada correctamente.")
+                    services.site_prep_service.register_site_event(
+                        site_id, 
+                        evt_type, 
+                        datetime.datetime.combine(evt_date, datetime.time(0, 0)), 
+                        evt_desc
+                    )
+                    st.success("✅ Labor registrada correctamente.")
                 except ValueError as e:
-                    st.error(f"Error de validación: {e}")
+                    st.error(f"❌ Error de validación: {e}")
                 except Exception as e:
-                    st.error(f"Error inesperado: {e}")
+                    st.error(f"❌ Error inesperado: {e}")
         
-        st.markdown("### Historial de Labores")
-        events = services.disposal_service.get_site_events(site_id)
-        # Filter for prep events if needed, or show all
-        if events:
-            for evt in events:
-                st.text(f"{evt.event_date} | {evt.event_type} | {evt.description}")
-        else:
-            st.info("No hay labores registradas.")
-
-    # --- TAB 2: EXECUTION (DISPOSAL) ---
-    with tab_exec:
-        st.subheader("Bandeja de Entrada en Tiempo Real (Descargas Pendientes)")
+        st.divider()
+        st.markdown("### 📋 Historial de Labores")
         
-        # Auto-refresh button or mechanism could be added here
-        if st.button("🔄 Actualizar Bandeja"):
-            st.rerun()
-            
-        pending = services.disposal_service.get_pending_disposal_loads(site_id)
-        
-        if not pending:
-            st.info("No hay cargas pendientes de incorporación. (Esperando descargas de transporte...)")
-        else:
-            st.success(f"Hay {len(pending)} cargas esperando incorporación.")
-            
-            for load in pending:
-                with st.expander(f"🚛 Carga #{load.id} - Guía: {load.guide_number or 'S/N'} - {load.weight_net} kg", expanded=True):
-                    c1, c2, c3 = st.columns(3)
-                    with c1:
-                        st.markdown(f"**Ticket:** {load.ticket_number}")
-                        st.markdown(f"**Llegada:** {load.arrival_time}")
-                    with c2:
-                        st.markdown(f"**Origen ID:** {load.origin_facility_id}")
-                        # Ideally show Class A/B here if we fetched batch info
-                    with c3:
-                        st.markdown(f"**Estado:** {load.status}")
+        try:
+            events = services.site_prep_service.get_site_events(site_id)
+            if events:
+                for evt in events:
+                    st.text(f"{evt.event_date} | {evt.event_type} | {evt.description or 'Sin descripción'}")
+            else:
+                st.info("No hay labores registradas para este predio.")
+        except Exception as e:
+            st.error(f"Error al cargar historial: {e}")
 
-                    st.divider()
-                    st.markdown("#### Registro de Incorporación")
-                    
-                    f_col1, f_col2 = st.columns(2)
-                    with f_col1:
-                        gps_coords = st.text_input(f"📍 Coordenadas GPS", value="-33.456, -70.657", key=f"gps_{load.id}")
-                    with f_col2:
-                        method = st.selectbox("Método de Incorporación", ["Inyección Directa", "Incorporación Mecánica", "Superficial"], key=f"meth_{load.id}")
-                    
-                    if st.button(f"✅ Confirmar Disposición (Finalizar)", key=f"fin_{load.id}"):
-                        try:
-                            # We can append method to description or coordinates for now
-                            final_coords = f"{gps_coords} | {method}"
-                            services.disposal_service.execute_disposal(load.id, final_coords)
-                            st.success(f"Carga #{load.id} dispuesta e incorporada exitosamente.")
-                            st.rerun()
-                        except ValueError as e:
-                            st.error(f"Error de validación: {e}")
-                        except Exception as e:
-                            st.error(f"Error inesperado: {e}")
-
-    # --- TAB 3: CLOSURE (DO-17, DO-21) ---
+    # ============================================
+    # TAB 4: CLOSURE (Cierre de Faena)
+    # ============================================
     with tab_close:
-        st.subheader("Cierre Operativo de Faena")
+        st.subheader("🏁 Cierre Operativo de Faena")
         
         with st.form("closure_form"):
             c_date = st.date_input("Fecha de Cierre", datetime.date.today())
@@ -123,10 +263,15 @@ def disposal_operations_page():
             if st.form_submit_button("🔒 Registrar Cierre"):
                 try:
                     desc = f"Responsable: {responsible} | Paño: {check_sector} | Faena: {check_day} | Obs: {obs}"
-                    services.disposal_service.register_site_event(site_id, "Cierre Operativo", datetime.datetime.combine(c_date, datetime.time(23,59)), desc)
-                    st.success("Cierre operativo registrado correctamente.")
+                    services.site_prep_service.register_site_event(
+                        site_id, 
+                        "Cierre Operativo", 
+                        datetime.datetime.combine(c_date, datetime.time(23, 59)), 
+                        desc
+                    )
+                    st.success("✅ Cierre operativo registrado correctamente.")
                 except ValueError as e:
-                    st.error(f"Error de validación: {e}")
+                    st.error(f"❌ Error de validación: {e}")
                 except Exception as e:
-                    st.error(f"Error inesperado: {e}")
+                    st.error(f"❌ Error inesperado: {e}")
 

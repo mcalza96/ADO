@@ -7,24 +7,21 @@ from models.operations.load import Load
 class TreatmentReceptionService:
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
-        self.load_repo = BaseRepository(db_manager, Load, "loads")
+        from repositories.load_repository import LoadRepository
+        self.load_repo = LoadRepository(db_manager)
 
     def get_pending_reception_loads(self, plant_id: int) -> List[Load]:
-        """Loads that are PendingReception (Unloaded by Transport) at the Treatment Plant."""
-        with self.db_manager as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM loads WHERE destination_treatment_plant_id = ? AND status = 'PendingReception'", (plant_id,))
-            rows = cursor.fetchall()
-            return [Load(**dict(row)) for row in rows]
+        """Loads that are 'Delivered' (Closed by Driver) at the Treatment Plant."""
+        return self.load_repo.get_delivered_by_destination_type('TreatmentPlant', plant_id)
 
     def execute_reception(self, load_id: int, reception_time: datetime, discharge_time: datetime, ph: float, humidity: float) -> Load:
-        """Transition from PendingReception -> Treated (or Received)"""
+        """Transition from Delivered -> Treated (or Received)"""
         load = self.load_repo.get_by_id(load_id)
         if not load:
             raise ValueError("Load not found")
             
-        if load.status != 'PendingReception':
-            raise ValueError(f"Load must be PendingReception to execute reception. Current: {load.status}")
+        if load.status != 'Delivered':
+            raise ValueError(f"Load must be Delivered to execute reception. Current: {load.status}")
             
         load.status = 'Treated' # Or 'ReceivedAtPlant'
         load.reception_time = reception_time

@@ -3,6 +3,7 @@ from database.db_manager import DatabaseManager
 from repositories.contractor_repository import ContractorRepository
 from repositories.vehicle_repository import VehicleRepository
 from models.masters.transport import Contractor, Driver, Vehicle
+from models.operations.load import Load
 from database.repository import BaseRepository
 
 
@@ -11,6 +12,8 @@ class TransportService:
         self.contractor_repo = ContractorRepository(db_manager)
         self.vehicle_repo = VehicleRepository(db_manager)
         self.driver_repo = BaseRepository(db_manager, Driver, "drivers")
+        from repositories.load_repository import LoadRepository
+        self.load_repo = LoadRepository(db_manager)
         self.db_manager = db_manager  # Keep ref if needed for custom queries
 
     # --- Contractors ---
@@ -41,6 +44,9 @@ class TransportService:
     # --- Vehicles ---
     def get_vehicles_by_contractor(self, contractor_id: int) -> List[Vehicle]:
         return self.vehicle_repo.get_by_contractor(contractor_id)
+
+    def get_all_active_vehicles(self) -> List[Vehicle]:
+        return self.vehicle_repo.get_all_active()
 
     def create_vehicle(self, vehicle: Vehicle) -> Vehicle:
         """
@@ -84,4 +90,25 @@ class TransportService:
 
     def get_vehicle_by_id(self, vehicle_id: int) -> Optional[Vehicle]:
         return self.vehicle_repo.get_by_id(vehicle_id)
+
+    def get_driver_loads(self, vehicle_plate: str) -> List[Load]:
+        """
+        Obtiene las cargas activas asignadas a un vehículo por su patente.
+        
+        Lógica:
+        1. Buscar vehículo por patente usando VehicleRepository.get_by_license_plate()
+        2. Si no existe, retornar lista vacía
+        3. Usar LoadRepository.get_active_loads_by_vehicle() para obtener cargas
+        
+        Args:
+            vehicle_plate: Patente del vehículo (ej: "AB-1234")
+            
+        Returns:
+            Lista de cargas activas del vehículo
+        """
+        vehicle = self.vehicle_repo.get_by_license_plate(vehicle_plate)
+        if not vehicle:
+            return []
+            
+        return self.load_repo.get_active_loads_by_vehicle(vehicle.id)
 

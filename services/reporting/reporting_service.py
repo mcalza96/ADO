@@ -68,21 +68,74 @@ class ReportingService:
 
     def get_fleet_monitoring(self) -> pd.DataFrame:
         """
-        Returns a DataFrame with all trucks currently InTransit.
-        Calculates 'hours_elapsed'.
+        Returns a DataFrame with all trucks currently in the field logistics cycle.
+        Includes both 'Dispatched' (En Ruta) and 'Arrived' (En Cola/Espera de Descarga).
+        
+        Calculates:
+        - hours_elapsed: Travel time (Dispatched) or completed travel time (Arrived)
+        - waiting_time: Time waiting at site (only for Arrived status)
         """
-        query = "SELECT * FROM view_full_traceability WHERE status = 'InTransit'"
+        # Query loads with status IN ('Dispatched', 'Arrived')
+        # Note: view_full_traceability might not have 'Dispatched' if it was designed for old states
+        # We'll query loads table directly to ensure we get the new states
+        query = """
+            SELECT 
+                l.id as load_id,
+                l.status,
+                l.dispatch_time,
+                l.arrival_time,
+                l.weight_arrival,
+                l.weight_net,
+                l.ticket_number,
+                l.guide_number,
+                v.license_plate,
+                d.name as driver_name,
+                f.name as facility_name,
+                s.name as site_name,
+                l.destination_site_id
+            FROM loads l
+            LEFT JOIN vehicles v ON l.vehicle_id = v.id
+            LEFT JOIN drivers d ON l.driver_id = d.id
+            LEFT JOIN facilities f ON l.origin_facility_id = f.id
+            LEFT JOIN sites s ON l.destination_site_id = s.id
+            WHERE l.status IN ('Dispatched', 'Arrived')
+            ORDER BY l.dispatch_time DESC
+        """
         
         with self.db_manager as conn:
             df = pd.read_sql_query(query, conn)
             
         if not df.empty:
+            # Convert timestamps to datetime
             df['dispatch_time'] = pd.to_datetime(df['dispatch_time'])
+            df['arrival_time'] = pd.to_datetime(df['arrival_time'])
+            
             now = datetime.now()
-            # Calculate hours elapsed
-            df['hours_elapsed'] = (now - df['dispatch_time']).dt.total_seconds() / 3600
+            
+            # Calculate hours_elapsed based on status
+            def calculate_hours_elapsed(row):
+                if row['status'] == 'Dispatched':
+                    # For Dispatched: time since dispatch (ongoing trip)
+                    if pd.notna(row['dispatch_time']):
+                        return (now - row['dispatch_time']).total_seconds() / 3600
+                elif row['status'] == 'Arrived':
+                    # For Arrived: completed travel time (arrival - dispatch)
+                    if pd.notna(row['arrival_time']) and pd.notna(row['dispatch_time']):
+                        return (row['arrival_time'] - row['dispatch_time']).total_seconds() / 3600
+                return 0.0
+            
+            # Calculate waiting_time (only for Arrived)
+            def calculate_waiting_time(row):
+                if row['status'] == 'Arrived' and pd.notna(row['arrival_time']):
+                    return (now - row['arrival_time']).total_seconds() / 3600
+                return 0.0
+            
+            df['hours_elapsed'] = df.apply(calculate_hours_elapsed, axis=1)
+            df['waiting_time'] = df.apply(calculate_waiting_time, axis=1)
         else:
+            # Empty DataFrame with expected columns
             df['hours_elapsed'] = 0.0
+            df['waiting_time'] = 0.0
             
         return df
 
