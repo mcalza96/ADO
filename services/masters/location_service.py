@@ -1,37 +1,31 @@
-from typing import List
+from typing import List, Optional
 from database.db_manager import DatabaseManager
-from database.repository import BaseRepository
+from repositories.facility_repository import FacilityRepository
+from repositories.site_repository import SiteRepository
 from models.masters.location import Facility, Site
 
+
 class LocationService:
-    def get_facility_by_id(self, facility_id: int) -> Facility:
-        with self.db_manager as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM facilities WHERE id = ?", (facility_id,))
-            row = cursor.fetchone()
-            return Facility(**dict(row)) if row else None
+    def __init__(self, db_manager: DatabaseManager):
+        self.facility_repo = FacilityRepository(db_manager)
+        self.site_repo = SiteRepository(db_manager)
+        self.db_manager = db_manager
+
+    def get_facility_by_id(self, facility_id: int) -> Optional[Facility]:
+        return self.facility_repo.get_by_id(facility_id)
 
     def update_facility_allowed_vehicle_types(self, facility_id: int, allowed_types: str) -> bool:
-        with self.db_manager as conn:
-            cursor = conn.cursor()
-            cursor.execute("UPDATE facilities SET allowed_vehicle_types = ? WHERE id = ?", (allowed_types, facility_id))
-            conn.commit()
-            return cursor.rowcount > 0
-    def __init__(self, db_manager: DatabaseManager):
-        self.facility_repo = BaseRepository(db_manager, Facility, "facilities")
-        self.site_repo = BaseRepository(db_manager, Site, "sites")
-        self.db_manager = db_manager
+        return self.facility_repo.update_allowed_vehicle_types(facility_id, allowed_types)
 
     # --- Facilities ---
     def get_facilities_by_client(self, client_id: int) -> List[Facility]:
-        with self.db_manager as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM facilities WHERE client_id = ? AND is_active = 1", (client_id,))
-            rows = cursor.fetchall()
-            return [Facility(**dict(row)) for row in rows]
+        return self.facility_repo.get_by_client(client_id)
 
     def create_facility(self, facility: Facility) -> Facility:
         return self.facility_repo.add(facility)
+    
+    def get_all_facilities(self) -> List[Facility]:
+        return self.facility_repo.get_all_active()
 
     # --- Sites ---
     def get_all_sites(self) -> List[Site]:
@@ -39,3 +33,7 @@ class LocationService:
 
     def create_site(self, site: Site) -> Site:
         return self.site_repo.add(site)
+    
+    def get_site_by_id(self, site_id: int) -> Optional[Site]:
+        return self.site_repo.get_by_id(site_id)
+

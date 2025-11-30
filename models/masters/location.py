@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
+from datetime import datetime
 
 @dataclass
 class Facility:
@@ -22,3 +23,14 @@ class Site:
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     is_active: bool = True
+
+@dataclass
+class Plot:
+    id: Optional[int]
+    site_id: int
+    name: str
+    area_hectares: float
+    crop_type: Optional[str] = None
+    is_active: bool = True
+    nitrogen_limit_kg_per_ha: Optional[float] = None
+    created_at: Optional[datetime] = None

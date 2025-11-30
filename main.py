@@ -5,9 +5,15 @@ from ui.masters.containers_view import containers_view
 from ui.requests_view import requests_page
 from ui.planning_view import planning_page
 from ui.operations.operations_view import operations_page
+from ui.operations.dispatch_view import dispatch_view
+from ui.operations.reception_view import reception_view
 from ui.disposal.operations import disposal_operations_page
 from ui.treatment.operations import treatment_operations_page
 from ui.operations.dashboard_view import dashboard_page
+
+from ui.reporting.client_portal import client_portal_page
+from ui.reporting.logistics_dashboard import logistics_dashboard_page
+from ui.reporting.agronomy_dashboard import agronomy_dashboard_page
 
 # Page configuration
 st.set_page_config(
@@ -62,7 +68,7 @@ def main():
             # Main Module Selection
             module = st.selectbox(
                 "Módulo",
-                ["Dashboard", "Portal Clientes", "Transporte", "Disposición", "Tratamiento", "Configuración"]
+                ["Dashboard", "Reportes", "Portal Clientes", "Transporte", "Disposición", "Tratamiento", "Configuración"]
             )
             
             st.divider()
@@ -72,7 +78,15 @@ def main():
             if module == "Transporte":
                 sub_menu = st.radio(
                     "Gestión de Transporte",
-                    ["Planificación", "Operaciones"]
+                    ["Planificación", "Despacho", "Recepción", "Operaciones (Legacy)"]
+                )
+            
+            # Sub-navigation for Reportes
+            report_menu = None
+            if module == "Reportes":
+                report_menu = st.radio(
+                    "Vistas de Inteligencia",
+                    ["Torre de Control (Logística)", "Drill-Down Agronómico", "Vista Cliente (Simulada)"]
                 )
             
             if st.button("Logout"):
@@ -83,13 +97,25 @@ def main():
         if module == "Dashboard":
             dashboard_page()
             
+        elif module == "Reportes":
+            if report_menu == "Torre de Control (Logística)":
+                logistics_dashboard_page()
+            elif report_menu == "Drill-Down Agronómico":
+                agronomy_dashboard_page()
+            elif report_menu == "Vista Cliente (Simulada)":
+                client_portal_page()
+
         elif module == "Portal Clientes":
             requests_page()
             
         elif module == "Transporte":
             if sub_menu == "Planificación":
                 planning_page()
-            elif sub_menu == "Operaciones":
+            elif sub_menu == "Despacho":
+                dispatch_view()
+            elif sub_menu == "Recepción":
+                reception_view()
+            elif sub_menu == "Operaciones (Legacy)":
                 operations_page()
                 
         elif module == "Disposición":

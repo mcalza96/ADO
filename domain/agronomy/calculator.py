@@ -16,7 +16,7 @@ class AgronomyCalculator:
         """
         # 1. Determine Factors
         # Kvol: Volatilization factor. 1.0 if injected (no loss), ~0.5-0.7 if surface applied.
-        k_vol = 1.0 if scenario.injection_method else 0.7
+        k_vol = 1.0 if scenario.injection_method else 0.5
         
         # Kmin: Mineralization factor based on sludge type
         k_min = K_MIN_DEFAULTS.get(sludge_type, 0.20)

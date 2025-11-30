@@ -230,3 +230,51 @@ CREATE TABLE IF NOT EXISTS maintenance_events (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL
 );
+
+-- ==========================================
+-- Reporting Views
+-- ==========================================
+
+-- View: Full Traceability
+-- Purpose: Simplifies complex joins for reporting and dashboards
+DROP VIEW IF EXISTS view_full_traceability;
+CREATE VIEW view_full_traceability AS
+SELECT 
+    l.id AS load_id,
+    l.ticket_number,
+    l.guide_number,
+    l.status,
+    l.requested_date,
+    l.scheduled_date,
+    l.dispatch_time,
+    l.arrival_time,
+    l.weight_gross,
+    l.weight_tare,
+    l.weight_net,
+    
+    -- Client & Facility
+    c.name AS client_name,
+    f.name AS facility_name,
+    
+    -- Batch Info
+    b.batch_code,
+    b.class_type,
+    
+    -- Destination
+    s.name AS site_name,
+    s.region AS site_region,
+    
+    -- Transport
+    dr.name AS driver_name,
+    dr.rut AS driver_rut,
+    v.license_plate,
+    ctr.name AS contractor_name
+    
+FROM loads l
+LEFT JOIN facilities f ON l.origin_facility_id = f.id
+LEFT JOIN clients c ON f.client_id = c.id
+LEFT JOIN batches b ON l.batch_id = b.id
+LEFT JOIN sites s ON l.destination_site_id = s.id
+LEFT JOIN drivers dr ON l.driver_id = dr.id
+LEFT JOIN contractors ctr ON dr.contractor_id = ctr.id
+LEFT JOIN vehicles v ON l.vehicle_id = v.id;

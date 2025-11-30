@@ -8,10 +8,21 @@ class Batch:
     facility_id: int
     batch_code: str
     production_date: date
-    sludge_type: Optional[str] = None
-    class_type: Optional[str] = None
     initial_tonnage: Optional[float] = None
-    status: str = 'Open'
+    current_tonnage: Optional[float] = None  # Available stock for dispatch
+    sludge_type: Optional[str] = None
+    class_type: Optional[str] = None  # 'A', 'B', 'NoClass'
+    status: str = 'Available'  # Available, Depleted, Quarantined
+    
+    # Nutrient Analysis (for PAN calculation and compliance)
+    nitrate_no3: Optional[float] = None  # mg/kg dry weight
+    ammonium_nh4: Optional[float] = None  # mg/kg dry weight
+    tkn: Optional[float] = None  # Total Kjeldahl Nitrogen mg/kg
+    percent_solids: Optional[float] = None  # % Dry Matter (0-100)
+    
+    # Heavy Metals (JSON string serialized from MetalAnalysisDTO)
+    heavy_metals_json: Optional[str] = None
+    
     created_at: Optional[datetime] = None
 
 @dataclass

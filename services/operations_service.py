@@ -3,6 +3,8 @@ from datetime import datetime
 from database.db_manager import DatabaseManager
 from repositories.load_repository import LoadRepository
 from repositories.site_repository import SiteRepository
+from repositories.batch_repository import BatchRepository
+from repositories.application_repository import ApplicationRepository
 from models.operations.load import Load
 
 # Import new specialized services
@@ -24,9 +26,11 @@ class OperationsService:
         
         # Initialize Repositories needed for Compliance
         site_repo = SiteRepository(db_manager)
+        batch_repo = BatchRepository(db_manager)
+        application_repo = ApplicationRepository(db_manager)
         
         # Initialize Compliance Service
-        compliance_service = ComplianceService(site_repo, self.load_repo)
+        compliance_service = ComplianceService(site_repo, self.load_repo, batch_repo, application_repo)
         
         # Initialize Sub-services
         self.logistics_service = LogisticsService(db_manager, compliance_service)

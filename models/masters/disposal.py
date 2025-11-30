@@ -2,14 +2,7 @@ from dataclasses import dataclass
 from typing import Optional
 from datetime import date, datetime
 
-@dataclass
-class Plot:
-    id: Optional[int]
-    site_id: int
-    name: str
-    area_hectares: Optional[float] = None
-    crop_type: Optional[str] = None
-    is_active: bool = True
+
 
 @dataclass
 class SoilSample:
@@ -23,6 +16,7 @@ class SoilSample:
     heavy_metals_limit_json: Optional[str] = None
     valid_until: Optional[date] = None
     created_at: Optional[datetime] = None
+
 
 @dataclass
 class Application:

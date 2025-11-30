@@ -6,6 +6,8 @@ from services.operations.logistics_service import LogisticsService
 from services.compliance.compliance_service import ComplianceService
 from repositories.site_repository import SiteRepository
 from repositories.load_repository import LoadRepository
+from repositories.batch_repository import BatchRepository
+from repositories.application_repository import ApplicationRepository
 from services.masters.transport_service import TransportService
 from services.masters.location_service import LocationService
 from services.masters.treatment_plant_service import TreatmentPlantService
@@ -19,9 +21,11 @@ def planning_page():
     # Repositories
     site_repo = SiteRepository(db)
     load_repo = LoadRepository(db)
+    batch_repo = BatchRepository(db)
+    application_repo = ApplicationRepository(db)
     
     # Services
-    compliance_service = ComplianceService(site_repo, load_repo)
+    compliance_service = ComplianceService(site_repo, load_repo, batch_repo, application_repo)
     logistics_service = LogisticsService(db, compliance_service)
     
     transport_service = TransportService(db)

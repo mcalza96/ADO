@@ -37,11 +37,18 @@ class PdfManifestGenerator(ManifestGenerator):
         self._key_value(pdf, "Lote (Batch ID):", str(load.batch_id or "N/A"))
         pdf.ln(5)
         
+        # --- Section 3.5: Agronomic Data (Sprint 3) ---
+        self._section_title(pdf, "3.5. INFORMACIÓN AGRONÓMICA (CUMPLIMIENTO)")
+        self._key_value(pdf, "PAN (N Disponible):", f"{load_data.get('pan_value', 'N/A')} kg/ton")
+        self._key_value(pdf, "Tasa Aplicación:", f"{load_data.get('agronomic_rate', 'N/A')} kg N/ha")
+        self._key_value(pdf, "Total N Aplicado:", f"{load_data.get('applied_nitrogen_kg', 'N/A')} kg")
+        pdf.ln(5)
+        
         # --- Section 4: Weighing ---
         self._section_title(pdf, "4. PESAJE (Kg)")
         pdf.set_font("Helvetica", "", 10)
-        pdf.cell(60, 8, f"Peso Bruto: {load.weight_gross or 0}", border=1)
-        pdf.cell(60, 8, f"Tara: {load.weight_tare or 0}", border=1)
+        pdf.cell(60, 8, f"Peso Bruto: {load_data.get('weight_gross', 'Pendiente')}", border=1)
+        pdf.cell(60, 8, f"Tara: {load_data.get('weight_tare', 'Pendiente')}", border=1)
         pdf.set_font("Helvetica", "B", 10)
         pdf.cell(60, 8, f"Peso Neto: {load.weight_net or 0}", border=1, new_x="LMARGIN", new_y="NEXT")
         pdf.ln(5)

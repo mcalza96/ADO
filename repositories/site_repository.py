@@ -1,8 +1,7 @@
 from typing import Optional
 from database.repository import BaseRepository
 from database.db_manager import DatabaseManager
-from models.masters.location import Site
-from models.masters.disposal import Plot
+from models.masters.location import Site, Plot
 
 class SiteRepository(BaseRepository[Site]):
     def __init__(self, db_manager: DatabaseManager):

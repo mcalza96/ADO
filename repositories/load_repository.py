@@ -52,3 +52,41 @@ class LoadRepository(BaseRepository[Load]):
             cursor.execute(f"SELECT * FROM {self.table_name} WHERE destination_site_id = ? AND status = 'PendingDisposal'", (site_id,))
             rows = cursor.fetchall()
             return [self.model_cls(**dict(row)) for row in rows]
+
+    def create_load(self, load: Load) -> Load:
+        """
+        Creates a new load with initial status='InTransit' for dispatch workflow.
+        """
+        return self.add(load)
+
+    def update_to_delivered(self, load_id: int, arrival_time, final_weight: float) -> bool:
+        """
+        Updates a load to 'Delivered' status with arrival time and final weight.
+        Used in reception workflow.
+        
+        Args:
+            load_id: ID of the load to update
+            arrival_time: Datetime of arrival
+            final_weight: Final weight in kg (may differ from estimated)
+        
+        Returns:
+            True if update successful, False otherwise
+        """
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"UPDATE {self.table_name} SET status = 'Delivered', arrival_time = ?, weight_net = ? WHERE id = ?",
+                (arrival_time, final_weight, load_id)
+            )
+            return cursor.rowcount > 0
+
+    def get_in_transit_loads(self) -> List[Load]:
+        """
+        Returns all loads with status='InTransit' for reception view.
+        Ordered by dispatch_time DESC (most recent first).
+        """
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            cursor.execute(f"SELECT * FROM {self.table_name} WHERE status = 'InTransit' ORDER BY dispatch_time DESC")
+            rows = cursor.fetchall()
+            return [self.model_cls(**dict(row)) for row in rows]

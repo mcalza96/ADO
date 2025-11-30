@@ -2,6 +2,7 @@ import streamlit as st
 from database.db_manager import DatabaseManager
 from services.masters.treatment_plant_service import TreatmentPlantService
 from services.operations.treatment_reception import TreatmentReceptionService
+from services.operations.batch_service import BatchService
 from ui.treatment.ds4_monitoring import ds4_monitoring_view
 from ui.styles import apply_industrial_style
 import datetime
@@ -13,6 +14,7 @@ def treatment_operations_page():
     db = DatabaseManager()
     plant_service = TreatmentPlantService(db)
     reception_service = TreatmentReceptionService(db)
+    batch_service = BatchService(db)
     
     # 1. Context Selection (Plant)
     plants = plant_service.get_all_plants()
@@ -26,8 +28,120 @@ def treatment_operations_page():
     
     st.divider()
     
-    # TABS
-    tab_reception, tab_ds4 = st.tabs(["📥 Recepción de Lodos", "🧪 Proceso DS4 (Salida)"])
+    # TABS - Added Batch Management
+    tab_batches, tab_reception, tab_ds4 = st.tabs([
+        "📦 Gestión de Lotes", 
+        "📥 Recepción de Lodos", 
+        "🧪 Proceso DS4 (Salida)"
+    ])
+    
+    with tab_batches:
+        st.subheader("Gestión de Lotes de Producción")
+        
+        # Form to create new batch
+        with st.expander("➕ Crear Nuevo Lote", expanded=False):
+            with st.form("new_batch_form"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    batch_code = st.text_input(
+                        "Código de Lote*",
+                        placeholder="ej: L-2025-11-29-A",
+                        help="Código único para identificar el lote"
+                    )
+                    production_date = st.date_input(
+                        "Fecha de Producción*",
+                        value=datetime.date.today()
+                    )
+                with col2:
+                    initial_tonnage = st.number_input(
+                        "Tonelaje Inicial (kg)*",
+                        min_value=0.0,
+                        step=100.0,
+                        format="%.2f"
+                    )
+                    class_type = st.selectbox(
+                        "Clasificación*",
+                        options=["A", "B", "NoClass"],
+                        help="Clasificación del biosólido según normativa"
+                    )
+                
+                sludge_type = st.text_input(
+                    "Tipo de Lodo (opcional)",
+                    placeholder="ej: Deshidratado, Estabilizado"
+                )
+                
+                if st.form_submit_button("✅ Crear Lote", type="primary"):
+                    try:
+                        batch = batch_service.create_daily_batch(
+                            facility_id=plant_id,
+                            batch_code=batch_code,
+                            production_date=production_date,
+                            initial_tonnage=initial_tonnage,
+                            class_type=class_type,
+                            sludge_type=sludge_type if sludge_type else None
+                        )
+                        st.success(f"✅ Lote '{batch_code}' creado exitosamente con {initial_tonnage:,.0f} kg")
+                        st.rerun()
+                    except ValueError as e:
+                        st.error(f"❌ Error: {str(e)}")
+                    except Exception as e:
+                        st.error(f"❌ Error inesperado: {str(e)}")
+        
+        # Table of active batches
+        st.divider()
+        st.markdown("### Lotes Activos")
+        
+        batches = batch_service.get_batches_by_facility(plant_id)
+        
+        if not batches:
+            st.info("No hay lotes registrados para esta planta.")
+        else:
+            # Prepare data for display
+            batch_data = []
+            for b in batches:
+                current = b.current_tonnage or 0
+                initial = b.initial_tonnage or 0
+                percentage = (current / initial * 100) if initial > 0 else 0
+                
+                batch_data.append({
+                    "ID": b.id,
+                    "Código": b.batch_code,
+                    "Fecha Producción": b.production_date.strftime("%Y-%m-%d") if hasattr(b.production_date, 'strftime') else str(b.production_date),
+                    "Tonelaje Inicial (kg)": f"{initial:,.0f}",
+                    "Saldo Disponible (kg)": f"{current:,.0f}",
+                    "% Disponible": f"{percentage:.1f}%",
+                    "Clase": b.class_type or "N/A",
+                    "Estado": b.status
+                })
+            
+            # Display with column configuration
+            st.dataframe(
+                batch_data,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "ID": st.column_config.NumberColumn("ID", width="small"),
+                    "% Disponible": st.column_config.ProgressColumn(
+                        "% Disponible",
+                        min_value=0,
+                        max_value=100,
+                        format="%.1f%%"
+                    )
+                }
+            )
+            
+            # Summary metrics
+            col_m1, col_m2, col_m3 = st.columns(3)
+            total_initial = sum(b.initial_tonnage or 0 for b in batches)
+            total_available = sum(b.current_tonnage or 0 for b in batches)
+            available_batches = sum(1 for b in batches if b.status == 'Available')
+            
+            with col_m1:
+                st.metric("Total Lotes", len(batches))
+            with col_m2:
+                st.metric("Lotes Disponibles", available_batches)
+            with col_m3:
+                st.metric("Stock Total Disponible", f"{total_available:,.0f} kg")
     
     with tab_reception:
         st.subheader("Bandeja de Entrada (Descargas Pendientes)")

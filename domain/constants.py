@@ -17,3 +17,18 @@ CROP_REQUIREMENTS = {
     'Hay': 100.0,
     'Pasture': 80.0
 }
+
+# EPA 503 Table 1 - Ceiling Concentrations for Heavy Metals (mg/kg dry weight)
+EPA_503_TABLE1_LIMITS = {
+    'arsenic': 75.0,
+    'cadmium': 85.0,
+    'copper': 4300.0,
+    'lead': 840.0,
+    'mercury': 57.0,
+    'nickel': 420.0,
+    'selenium': 100.0,
+    'zinc': 7500.0
+}
+
+# Default nitrogen application limit if not specified by site (kg N/ha/year)
+DEFAULT_NITROGEN_LIMIT = 200.0

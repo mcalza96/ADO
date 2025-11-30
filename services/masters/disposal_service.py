@@ -1,12 +1,15 @@
 from typing import List
 from database.db_manager import DatabaseManager
+from repositories.plot_repository import PlotRepository
 from database.repository import BaseRepository
-from models.masters.disposal import Plot, SoilSample
+from models.masters.location import Plot
+from models.masters.disposal import SoilSample
 from domain.compliance.validator import ComplianceValidator
+
 
 class DisposalService:
     def __init__(self, db_manager: DatabaseManager):
-        self.plot_repo = BaseRepository(db_manager, Plot, "plots")
+        self.plot_repo = PlotRepository(db_manager)
         self.soil_repo = BaseRepository(db_manager, SoilSample, "soil_samples")
         self.db_manager = db_manager
 
@@ -34,11 +37,7 @@ class DisposalService:
 
     # --- Plots ---
     def get_plots_by_site(self, site_id: int) -> List[Plot]:
-        with self.db_manager as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM plots WHERE site_id = ? AND is_active = 1", (site_id,))
-            rows = cursor.fetchall()
-            return [Plot(**dict(row)) for row in rows]
+        return self.plot_repo.get_by_site(site_id)
 
     def create_plot(self, plot: Plot) -> Plot:
         return self.plot_repo.add(plot)
@@ -51,5 +50,7 @@ class DisposalService:
             rows = cursor.fetchall()
             return [SoilSample(**dict(row)) for row in rows]
 
-    def add_soil_sample(self, sample: SoilSample) -> SoilSample:
+    def create_soil_sample(self, sample: SoilSample) -> SoilSample:
+        """Renamed from add_soil_sample for consistency"""
         return self.soil_repo.add(sample)
+

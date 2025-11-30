@@ -17,3 +17,7 @@ class LogisticsException(DomainException):
 class TransitionException(DomainException):
     """Raised when an invalid state transition is attempted."""
     pass
+
+class ComplianceViolationError(ComplianceException):
+    """Raised when a dispatch is blocked due to compliance violations (hard constraints)."""
+    pass

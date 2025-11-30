@@ -3,6 +3,7 @@ from services.masters.transport_service import TransportService
 from database.db_manager import DatabaseManager
 from models.masters.transport import Contractor, Driver, Vehicle
 
+
 def transport_page():
     st.header("Gestión de Transporte")
     
@@ -24,20 +25,22 @@ def transport_page():
                     try:
                         c = Contractor(id=None, name=name, rut=rut, contact_name=contact, phone=phone)
                         transport_service.create_contractor(c)
-                        st.success("Contratista creado")
+                        st.success("✅ Contratista creado exitosamente")
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Error: {e}")
+                        st.error(f"❌ Error al crear contratista: {e}")
         
         contractors = transport_service.get_all_contractors()
         if contractors:
             st.dataframe([vars(c) for c in contractors], use_container_width=True)
+        else:
+            st.info("No hay contratistas registrados.")
     
     # --- Tab 2: Drivers ---
     with tab2:
         st.subheader("Choferes")
         if not contractors:
-            st.warning("Primero cree un contratista")
+            st.warning("⚠️ Primero cree un contratista")
         else:
             contractor_opts = {c.name: c.id for c in contractors}
             selected_contractor_name = st.selectbox("Seleccionar Contratista", list(contractor_opts.keys()), key="driver_contractor")
@@ -53,10 +56,10 @@ def transport_page():
                         try:
                             d = Driver(id=None, contractor_id=selected_contractor_id, name=d_name, rut=d_rut, license_number=d_license, phone=d_phone)
                             transport_service.create_driver(d)
-                            st.success("Chofer creado")
+                            st.success("✅ Chofer creado exitosamente")
                             st.rerun()
                         except Exception as e:
-                            st.error(f"Error: {e}")
+                            st.error(f"❌ Error al crear chofer: {e}")
 
             drivers = transport_service.get_drivers_by_contractor(selected_contractor_id)
             if drivers:
@@ -68,7 +71,7 @@ def transport_page():
     with tab3:
         st.subheader("Flota de Camiones")
         if not contractors:
-            st.warning("Primero cree un contratista")
+            st.warning("⚠️ Primero cree un contratista")
         else:
             # Re-use selection or create new one? Better to have independent selection or shared?
             # Let's use a new selectbox for clarity in this tab
@@ -81,24 +84,44 @@ def transport_page():
                     with col1:
                         plate = st.text_input("Patente")
                         brand = st.text_input("Marca")
-                        year = st.number_input("Año", min_value=1990, max_value=2030, step=1)
+                        year = st.number_input("Año", min_value=1990, max_value=2030, step=1, value=2020)
                     with col2:
-                        tare = st.number_input("Tara (kg)", min_value=0.0)
-                        cap = st.number_input("Capacidad Máx (kg)", min_value=0.0)
+                        tare = st.number_input("Tara (kg)", min_value=0.0, help="Peso del camión vacío")
+                        cap = st.number_input("Capacidad Máx (kg)", min_value=0.0, help="Capacidad máxima de carga")
                         v_type = st.selectbox("Tipo de Camión", ["BATEA", "AMPLIROLL"])
                         model = st.text_input("Modelo")
                     
                     if st.form_submit_button("Guardar Camión"):
                         try:
-                            v = Vehicle(id=None, contractor_id=v_contractor_id, license_plate=plate, tare_weight=tare, max_capacity=cap, brand=brand, model=model, year=year, type=v_type)
-                            transport_service.create_vehicle(v)
-                            st.success("Camión registrado")
-                            st.rerun()
+                            # Validate required fields
+                            if not plate:
+                                st.error("⚠️ La patente es obligatoria")
+                            elif tare <= 0 or cap <= 0:
+                                st.error("⚠️ La tara y capacidad deben ser mayores a cero")
+                            else:
+                                v = Vehicle(
+                                    id=None, 
+                                    contractor_id=v_contractor_id, 
+                                    license_plate=plate, 
+                                    tare_weight=tare, 
+                                    max_capacity=cap, 
+                                    brand=brand, 
+                                    model=model, 
+                                    year=year, 
+                                    type=v_type
+                                )
+                                transport_service.create_vehicle(v)
+                                st.success("✅ Camión registrado exitosamente")
+                                st.rerun()
+                        except ValueError as ve:
+                            # Catch the specific business rule validation error
+                            st.error(f"⚠️ ERROR DE VALIDACIÓN: {ve}")
                         except Exception as e:
-                            st.error(f"Error: {e}")
+                            st.error(f"❌ Error al registrar camión: {e}")
             
             vehicles = transport_service.get_vehicles_by_contractor(v_contractor_id)
             if vehicles:
                 st.dataframe([vars(v) for v in vehicles], use_container_width=True)
             else:
-                st.info("No hay vehículos registrados")
+                st.info("No hay vehículos registrados para este contratista")
+

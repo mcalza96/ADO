@@ -1,21 +1,27 @@
 from typing import List, Optional
 from database.db_manager import DatabaseManager
-from database.repository import BaseRepository
+from repositories.contractor_repository import ContractorRepository
+from repositories.vehicle_repository import VehicleRepository
 from models.masters.transport import Contractor, Driver, Vehicle
+from database.repository import BaseRepository
+
 
 class TransportService:
     def __init__(self, db_manager: DatabaseManager):
-        self.contractor_repo = BaseRepository(db_manager, Contractor, "contractors")
+        self.contractor_repo = ContractorRepository(db_manager)
+        self.vehicle_repo = VehicleRepository(db_manager)
         self.driver_repo = BaseRepository(db_manager, Driver, "drivers")
-        self.vehicle_repo = BaseRepository(db_manager, Vehicle, "vehicles")
-        self.db_manager = db_manager # Keep ref if needed for custom queries
+        self.db_manager = db_manager  # Keep ref if needed for custom queries
 
     # --- Contractors ---
     def get_all_contractors(self) -> List[Contractor]:
-        return self.contractor_repo.get_all(order_by="name")
+        return self.contractor_repo.get_all_active()
 
     def create_contractor(self, contractor: Contractor) -> Contractor:
         return self.contractor_repo.add(contractor)
+    
+    def get_contractor_by_id(self, contractor_id: int) -> Optional[Contractor]:
+        return self.contractor_repo.get_by_id(contractor_id)
 
     # --- Drivers ---
     def get_drivers_by_contractor(self, contractor_id: int) -> List[Driver]:
@@ -34,14 +40,48 @@ class TransportService:
 
     # --- Vehicles ---
     def get_vehicles_by_contractor(self, contractor_id: int) -> List[Vehicle]:
-        with self.db_manager as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM vehicles WHERE contractor_id = ? AND is_active = 1", (contractor_id,))
-            rows = cursor.fetchall()
-            return [Vehicle(**dict(row)) for row in rows]
+        return self.vehicle_repo.get_by_contractor(contractor_id)
 
     def create_vehicle(self, vehicle: Vehicle) -> Vehicle:
+        """
+        Creates a new vehicle with validation.
+        
+        CRITICAL BUSINESS RULE: tare_weight must be strictly less than max_capacity.
+        
+        Args:
+            vehicle: Vehicle entity to create
+            
+        Returns:
+            Created vehicle with ID assigned
+            
+        Raises:
+            ValueError: If tare_weight >= max_capacity
+        """
+        if vehicle.tare_weight >= vehicle.max_capacity:
+            raise ValueError("La tara debe ser estrictamente menor que la capacidad máxima")
+        
         return self.vehicle_repo.add(vehicle)
+    
+    def update_vehicle(self, vehicle: Vehicle) -> bool:
+        """
+        Updates an existing vehicle with validation.
+        
+        CRITICAL BUSINESS RULE: tare_weight must be strictly less than max_capacity.
+        
+        Args:
+            vehicle: Vehicle entity to update
+            
+        Returns:
+            True if update was successful
+            
+        Raises:
+            ValueError: If tare_weight >= max_capacity
+        """
+        if vehicle.tare_weight >= vehicle.max_capacity:
+            raise ValueError("La tara debe ser estrictamente menor que la capacidad máxima")
+        
+        return self.vehicle_repo.update(vehicle)
 
     def get_vehicle_by_id(self, vehicle_id: int) -> Optional[Vehicle]:
         return self.vehicle_repo.get_by_id(vehicle_id)
+
