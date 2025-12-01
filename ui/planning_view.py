@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import datetime
+from container import get_container
 from database.db_manager import DatabaseManager
 from services.operations.logistics_service import LogisticsService
 from services.compliance.compliance_service import ComplianceService
@@ -15,22 +16,13 @@ from services.masters.treatment_plant_service import TreatmentPlantService
 def planning_page():
     st.title("🗓️ Tablero de Planificación (Control Tower)")
 
-    # --- Dependency Injection ---
-    db = DatabaseManager()
+    # --- Dependency Injection via Container ---
+    services = get_container()
     
-    # Repositories
-    site_repo = SiteRepository(db)
-    load_repo = LoadRepository(db)
-    batch_repo = BatchRepository(db)
-    application_repo = ApplicationRepository(db)
-    
-    # Services
-    compliance_service = ComplianceService(site_repo, load_repo, batch_repo, application_repo)
-    logistics_service = LogisticsService(db, compliance_service)
-    
-    transport_service = TransportService(db)
-    location_service = LocationService(db)
-    treatment_plant_service = TreatmentPlantService(db)
+    logistics_service = services.logistics_service
+    transport_service = services.transport_service
+    location_service = services.location_service
+    treatment_plant_service = services.treatment_plant_service
 
     # --- Tabs ---
     tab_backlog, tab_scheduled = st.tabs(["🔴 Por Planificar (Backlog)", "✅ Planificadas"])

@@ -1,8 +1,5 @@
 import streamlit as st
-from services.masters.treatment_service import TreatmentService
-from services.masters.client_service import ClientService
-from services.masters.location_service import LocationService
-from database.db_manager import DatabaseManager
+from container import get_container
 from models.masters.location import Facility
 from models.masters.treatment import Batch, LabResult
 import datetime
@@ -10,10 +7,10 @@ import datetime
 def treatment_page():
     st.header("Gestión de Plantas y Tratamiento")
     
-    db = DatabaseManager()
-    treatment_service = TreatmentService(db)
-    client_service = ClientService(db)
-    location_service = LocationService(db)
+    services = get_container()
+    treatment_service = services.treatment_service
+    client_service = services.client_service
+    location_service = services.location_service
     
     # 1. Select Client
     clients = client_service.get_all_clients()

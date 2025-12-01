@@ -1,7 +1,5 @@
 import streamlit as st
-from services.masters.disposal_service import DisposalService
-from services.masters.location_service import LocationService
-from database.db_manager import DatabaseManager
+from container import get_container
 from models.masters.location import Site, Plot
 from models.masters.disposal import SoilSample
 import datetime
@@ -10,9 +8,9 @@ import datetime
 def disposal_page():
     st.header("Gestión de Predios Agrícolas (Disposición)")
     
-    db = DatabaseManager()
-    disposal_service = DisposalService(db)
-    location_service = LocationService(db)
+    services = get_container()
+    disposal_service = services.master_disposal_service
+    location_service = services.location_service
     
     # 1. Manage Sites (Predios)
     st.subheader("Predios")

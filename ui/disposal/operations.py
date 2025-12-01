@@ -161,6 +161,30 @@ def disposal_operations_page():
                         st.markdown(f"**Estado:** `{load.status}`")
                         st.markdown(f"**Obs. Recepción:** {load.reception_observations or 'N/A'}")
                     
+                    # Quality Data Display with Warnings
+                    st.markdown("#### 🧪 Calidad de Carga")
+                    q_c1, q_c2 = st.columns(2)
+                    
+                    with q_c1:
+                        ph_val = load.quality_ph
+                        if ph_val is not None:
+                            if ph_val < 6.0 or ph_val > 8.5:
+                                st.warning(f"⚠️ **pH:** {ph_val} (Rango alerta)")
+                            else:
+                                st.success(f"✅ **pH:** {ph_val}")
+                        else:
+                            st.info("pH: No registrado")
+                            
+                    with q_c2:
+                        hum_val = load.quality_humidity
+                        if hum_val is not None:
+                            if hum_val < 40.0 or hum_val > 90.0: # Example warning range
+                                st.warning(f"⚠️ **Humedad:** {hum_val}% (Rango alerta)")
+                            else:
+                                st.success(f"✅ **Humedad:** {hum_val}%")
+                        else:
+                            st.info("Humedad: No registrado")
+                    
                     st.divider()
                     st.markdown("#### 🌾 Confirmación de Incorporación")
                     

@@ -1,18 +1,18 @@
 import streamlit as st
 from datetime import datetime, timedelta
-from database.db_manager import DatabaseManager
-from services.masters.container_service import ContainerService
-from services.operations.treatment_batch_service import TreatmentBatchService
-from services.operations_service import OperationsService
 from ui.styles import apply_industrial_style
 
-def ds4_monitoring_view(plant_id: int):
+def ds4_monitoring_view(plant_id: int, services=None):
+    """DS4 Monitoring view. Can receive services or get them from container."""
+    if services is None:
+        from container import get_container
+        services = get_container()
+        
     st.subheader("🧪 Monitoreo DS4 (Estabilización)")
     
-    db = DatabaseManager()
-    container_service = ContainerService(db)
-    batch_service = TreatmentBatchService(db)
-    ops_service = OperationsService(db)
+    container_service = services.container_service
+    treatment_batch_service = services.treatment_batch_service
+    ops_service = services.operations_service
     
     tab1, tab2, tab3 = st.tabs(["1. Llenado (Inicio)", "2. Monitoreo (pH)", "3. Despacho (Salida)"])
     
@@ -40,14 +40,14 @@ def ds4_monitoring_view(plant_id: int):
                 if st.form_submit_button("🔒 Cerrar Contenedor e Iniciar Proceso"):
                     # Combine date
                     dt = datetime.combine(datetime.today(), fill_time)
-                    batch_service.create_batch(plant_id, c_opts[sel_code], dt, ph_0, humidity)
+                    treatment_batch_service.create_batch(plant_id, c_opts[sel_code], dt, ph_0, humidity)
                     st.success("Contenedor cerrado. Iniciando cuenta regresiva de 24h.")
                     st.rerun()
 
     # --- TAB 2: MONITORING ---
     with tab2:
         st.markdown("### Control de pH (2h y 24h)")
-        active = batch_service.get_active_batches(plant_id)
+        active = treatment_batch_service.get_active_batches(plant_id)
         
         if not active:
             st.info("No hay contenedores en proceso de estabilización.")
@@ -81,7 +81,7 @@ def ds4_monitoring_view(plant_id: int):
                             with st.form(f"ph2_{batch.id}"):
                                 val = st.number_input("pH 2h", 0.0, 14.0, 12.0, key=f"in_2_{batch.id}")
                                 if st.form_submit_button("Registrar 2h"):
-                                    batch_service.update_ph_2h(batch.id, val)
+                                    treatment_batch_service.update_ph_2h(batch.id, val)
                                     st.rerun()
                         else:
                             st.info(f"⏳ Faltan {2 - hours_elapsed:.1f}h para medición 2h")
@@ -99,7 +99,7 @@ def ds4_monitoring_view(plant_id: int):
                         with st.form(f"ph24_{batch.id}"):
                             val = st.number_input("pH 24h", 0.0, 14.0, 0.0, key=f"in_24_{batch.id}")
                             if st.form_submit_button("Registrar pH 24h"):
-                                batch_service.update_ph_24h(batch.id, val)
+                                treatment_batch_service.update_ph_24h(batch.id, val)
                                 st.success("pH 24h registrado.")
                                 st.rerun()
 

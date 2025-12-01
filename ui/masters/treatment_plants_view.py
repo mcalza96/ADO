@@ -1,12 +1,12 @@
+
 import streamlit as st
-from database.db_manager import DatabaseManager
-from services.masters.treatment_plant_service import TreatmentPlantService
+from container import get_container
 
 def treatment_plants_page():
     st.subheader("🏭 Plantas de Tratamiento (Propias)")
     
-    db = DatabaseManager()
-    service = TreatmentPlantService(db)
+    services = get_container()
+    service = services.treatment_plant_service
     
     # Create Form
     with st.expander("Nueva Planta de Tratamiento"):

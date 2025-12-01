@@ -1,7 +1,5 @@
 import streamlit as st
-from database.db_manager import DatabaseManager
-from services.operations.reception_service import ReceptionService
-from services.operations.batch_service import BatchService
+from container import get_container
 from ui.styles import apply_industrial_style
 import datetime
 
@@ -13,9 +11,9 @@ def reception_view():
     apply_industrial_style()
     st.title("📦 Recepción de Cargas")
     
-    db = DatabaseManager()
-    batch_service = BatchService(db)
-    reception_service = ReceptionService(db, batch_service)
+    # Use dependency injection container
+    services = get_container()
+    reception_service = services.reception_service
     
     st.markdown("### Cargas en Tránsito")
     

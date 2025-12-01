@@ -1,18 +1,15 @@
 import streamlit as st
-from database.db_manager import DatabaseManager
-from services.masters.client_service import ClientService
-from services.masters.location_service import LocationService
-from services.operations_service import OperationsService
+from container import get_container
 import datetime
 
 def requests_page():
     st.title("📝 Solicitud de Retiros")
     st.markdown("Ingrese las solicitudes de retiro para sus plantas.")
     
-    db = DatabaseManager()
-    client_service = ClientService(db)
-    location_service = LocationService(db)
-    ops_service = OperationsService(db)
+    services = get_container()
+    client_service = services.client_service
+    location_service = services.location_service
+    ops_service = services.operations_service
     
     # 1. Select Client (Simulating User Context)
     clients = client_service.get_all_clients()

@@ -140,3 +140,60 @@ class LoadRepository(BaseRepository[Load]):
             cursor.execute(query, params)
             rows = cursor.fetchall()
             return [self.model_cls(**dict(row)) for row in rows]
+
+    def get_assignable_loads(self, vehicle_id: int) -> List[dict]:
+        """
+        Returns scheduled loads assigned to a specific vehicle with origin and destination names.
+        This is for the driver to see available trips to accept.
+        
+        Args:
+            vehicle_id: ID of the vehicle
+            
+        Returns:
+            List of dicts containing load data with origin_facility_name and destination_site_name
+        """
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT 
+                    l.*,
+                    f.name AS origin_facility_name,
+                    s.name AS destination_site_name
+                FROM loads l
+                LEFT JOIN facilities f ON l.origin_facility_id = f.id
+                LEFT JOIN sites s ON l.destination_site_id = s.id
+                WHERE l.vehicle_id = ? AND l.status = 'Scheduled'
+                ORDER BY l.scheduled_date DESC
+            """, (vehicle_id,))
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
+    
+    def get_active_load(self, vehicle_id: int) -> dict:
+        """
+        Returns the current active load for a specific vehicle.
+        Active loads are those with status: 'Accepted', 'InTransit', or 'Arrived'.
+        There should only be ONE active load per vehicle at any time.
+        
+        Args:
+            vehicle_id: ID of the vehicle
+            
+        Returns:
+            Dict containing load data with origin_facility_name and destination_site_name, or None
+        """
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT 
+                    l.*,
+                    f.name AS origin_facility_name,
+                    s.name AS destination_site_name
+                FROM loads l
+                LEFT JOIN facilities f ON l.origin_facility_id = f.id
+                LEFT JOIN sites s ON l.destination_site_id = s.id
+                WHERE l.vehicle_id = ? AND l.status IN ('Accepted', 'InTransit', 'Arrived')
+                ORDER BY l.dispatch_time DESC
+                LIMIT 1
+            """, (vehicle_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+

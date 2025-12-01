@@ -1,19 +1,15 @@
 import streamlit as st
+from container import get_container
 from ui.styles import apply_industrial_style
-from database.db_manager import DatabaseManager
-from services.operations_service import OperationsService
-from services.masters.treatment_service import TreatmentService
-from services.masters.disposal_service import DisposalService
-from domain.logistics.rules import LogisticsRules
 
 def operations_page():
     apply_industrial_style()
     st.title("🚛 OPERACIONES - EJECUCIÓN")
     
-    db = DatabaseManager()
-    ops_service = OperationsService(db)
-    treatment_service = TreatmentService(db)
-    disposal_service = DisposalService(db)
+    services = get_container()
+    ops_service = services.operations_service
+    treatment_service = services.treatment_service
+    disposal_service = services.master_disposal_service
     
     # 1. Identify Driver/Load
     # In a real app, Driver logs in. Here, we select a Scheduled Load to "Claim" it.
@@ -51,10 +47,7 @@ def operations_page():
         
         if is_treatment_origin:
             st.info("🏭 Origen: Planta de Tratamiento - Seleccione Contenedores")
-            from services.masters.container_service import ContainerService
-            from services.operations.treatment_batch_service import TreatmentBatchService
-            
-            c_service = ContainerService(db)
+            c_service = services.container_service
             # Get containers that are READY or MONITORING (Active) at this plant
             # Ideally we should filter by 'READY' only, but user said "available/ready"
             # Let's use get_ready_containers logic or similar.
@@ -73,8 +66,7 @@ def operations_page():
             # Let's assume get_available_containers returns those with status 'AVAILABLE'
             # But here we need those with status 'IN_USE' (holding a batch) that are ready to go.
             
-            # Let's use the batch service to get ready batches and extract containers
-            batch_service = TreatmentBatchService(db)
+            batch_service = services.batch_service
             ready_batches = batch_service.get_ready_batches(load.origin_treatment_plant_id)
             
             if not ready_batches:

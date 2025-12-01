@@ -85,6 +85,43 @@ class ReceptionService:
         self.load_repo.update(load)
         return load
 
+    def register_arrival(
+        self,
+        load_id: int,
+        weight_gross: float,
+        ph: float = None,
+        humidity: float = None,
+        observation: str = None
+    ) -> Load:
+        """
+        Registra llegada con datos de calidad (TTO-02/TTO-03).
+        Transiciona Load de 'InTransit' a 'Arrived'.
+        
+        Args:
+            load_id: ID of the load arriving
+            weight_gross: Gross weight measured at arrival (kg)
+            ph: pH measurement (optional)
+            humidity: Humidity percentage (optional)
+            observation: Reception observations (optional)
+            
+        Returns:
+            Updated Load object
+            
+        Raises:
+            ValueError: If load not found
+            TransitionException: If load is not in InTransit status
+        """
+        load = self.load_repo.get_by_id(load_id)
+        if not load:
+            raise ValueError(f"Carga con ID {load_id} no encontrada")
+        
+        # Delegate to Load domain model for state transition
+        load.register_arrival(weight_gross, ph, humidity, observation)
+        
+        # Persist changes
+        self.load_repo.update(load)
+        return load
+    
     def get_in_transit_loads(self) -> List[Load]:
         """
         Returns all loads currently in transit, for reception view.

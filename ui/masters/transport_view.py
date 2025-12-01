@@ -1,14 +1,13 @@
 import streamlit as st
-from services.masters.transport_service import TransportService
-from database.db_manager import DatabaseManager
+from container import get_container
 from models.masters.transport import Contractor, Driver, Vehicle
 
 
 def transport_page():
     st.header("Gestión de Transporte")
     
-    db = DatabaseManager()
-    transport_service = TransportService(db)
+    services = get_container()
+    transport_service = services.transport_service
     
     tab1, tab2, tab3 = st.tabs(["Contratistas", "Choferes", "Camiones"])
     

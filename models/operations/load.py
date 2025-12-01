@@ -112,11 +112,18 @@ class Load:
             humidity: Humedad final
             
         Raises:
-            ValueError: Si la carga no está en estado Arrived
+            ValueError: Si la carga no está en estado Arrived o si los datos de calidad están fuera de rango
         """
         # Validation: Verify current state
         if self.status != 'Arrived':
             raise ValueError(f"Solo se puede cerrar cargas Arrived. Estado actual: {self.status}")
+        
+        # Validation: Quality parameters must be within acceptable ranges
+        if ph < 5.0 or ph > 9.0:
+            raise ValueError(f"pH fuera de rango válido (5-9). Valor recibido: {ph}")
+        
+        if humidity < 0.0 or humidity > 100.0:
+            raise ValueError(f"Humedad fuera de rango válido (0-100%). Valor recibido: {humidity}")
             
         self.status = 'Delivered'
         self.weight_net = weight_net

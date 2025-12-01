@@ -1,7 +1,6 @@
+
 import streamlit as st
-from services.masters.client_service import ClientService
-from services.masters.location_service import LocationService
-from database.db_manager import DatabaseManager
+from container import get_container
 from models.masters.client import Client
 from models.masters.location import Facility
 
@@ -9,9 +8,9 @@ from models.masters.location import Facility
 def clients_page():
     st.header("Gestión de Clientes (Generadores)")
     
-    db = DatabaseManager()
-    client_service = ClientService(db)
-    location_service = LocationService(db)
+    services = get_container()
+    client_service = services.client_service
+    location_service = services.location_service
     
     # Form to add new client
     with st.expander("➕ Agregar Nuevo Cliente"):

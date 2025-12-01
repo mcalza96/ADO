@@ -32,7 +32,18 @@ from services.operations.batch_service import BatchService
 from services.compliance.compliance_service import ComplianceService
 from services.operations.dispatch_validation_service import DispatchValidationService
 from services.operations.nitrogen_application_service import NitrogenApplicationService
+from services.operations.reception_service import ReceptionService
 from repositories.vehicle_repository import VehicleRepository
+from services.operations.logistics_service import LogisticsService
+from services.operations.treatment_reception import TreatmentReceptionService
+from services.operations.treatment_batch_service import TreatmentBatchService
+from services.masters.client_service import ClientService
+from services.masters.treatment_plant_service import TreatmentPlantService
+from services.masters.container_service import ContainerService
+from services.masters.disposal_service import DisposalService as MasterDisposalService
+from services.masters.treatment_service import TreatmentService
+from services.operations_service import OperationsService
+from services.operations.dashboard_service import DashboardService
 
 @st.cache_resource
 def get_container() -> SimpleNamespace:
@@ -101,6 +112,31 @@ def get_container() -> SimpleNamespace:
         manifest_service
     )
     
+    # ReceptionService for TTO-02/TTO-03 workflows
+    reception_service = ReceptionService(db_manager, batch_service)
+    
+    # LogisticsService for planning workflows
+    logistics_service = LogisticsService(db_manager, compliance_service)
+    
+    # Treatment Reception Service
+    treatment_reception_service = TreatmentReceptionService(db_manager)
+    
+    # Treatment Batch Service (for DS4 monitoring)
+    treatment_batch_service = TreatmentBatchService(db_manager)
+    
+    # Master Services
+    client_service = ClientService(db_manager)
+    treatment_plant_service = TreatmentPlantService(db_manager)
+    container_service = ContainerService(db_manager)
+    master_disposal_service = MasterDisposalService(db_manager)
+    treatment_service = TreatmentService(db_manager)
+    
+    # Operations Facade (agregates multiple operation services)
+    operations_service = OperationsService(db_manager, dispatch_service=dispatch_service)
+    
+    # Dashboard Service
+    dashboard_service = DashboardService(db_manager)
+    
     # Return a simple container object with services as attributes
     return SimpleNamespace(
         db_manager=db_manager,
@@ -111,5 +147,19 @@ def get_container() -> SimpleNamespace:
         dispatch_service=dispatch_service,
         site_prep_service=site_prep_service,
         manifest_service=manifest_service,
-        batch_service=batch_service
+        batch_service=batch_service,
+        treatment_batch_service=treatment_batch_service,
+        reception_service=reception_service,
+        logistics_service=logistics_service,
+        treatment_reception_service=treatment_reception_service,
+        client_service=client_service,
+        treatment_plant_service=treatment_plant_service,
+        container_service=container_service,
+        master_disposal_service=master_disposal_service,
+        treatment_service=treatment_service,
+        operations_service=operations_service,
+        dashboard_service=dashboard_service,
+        compliance_service=compliance_service,
+        dispatch_validation_service=dispatch_validation_service,
+        nitrogen_app_service=nitrogen_app_service
     )

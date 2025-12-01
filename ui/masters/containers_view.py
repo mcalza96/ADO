@@ -1,14 +1,12 @@
 import streamlit as st
-from database.db_manager import DatabaseManager
-from services.masters.container_service import ContainerService
-from services.masters.treatment_plant_service import TreatmentPlantService
+from container import get_container
 
 def containers_view():
     st.title("📦 Gestión de Contenedores")
     
-    db = DatabaseManager()
-    service = ContainerService(db)
-    plant_service = TreatmentPlantService(db)
+    services = get_container()
+    service = services.container_service
+    plant_service = services.treatment_plant_service
     
     # Create New Container
     with st.expander("➕ Nuevo Contenedor", expanded=False):

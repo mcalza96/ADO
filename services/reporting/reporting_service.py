@@ -84,7 +84,7 @@ class ReportingService:
                 l.status,
                 l.dispatch_time,
                 l.arrival_time,
-                l.weight_arrival,
+                l.weight_gross_reception as weight_arrival,
                 l.weight_net,
                 l.ticket_number,
                 l.guide_number,

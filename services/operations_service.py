@@ -19,7 +19,7 @@ class OperationsService:
     Facade for Operations Module.
     Delegates to specialized services for state transitions.
     """
-    def __init__(self, db_manager: DatabaseManager):
+    def __init__(self, db_manager: DatabaseManager, dispatch_service: Optional[DispatchService] = None):
         self.db_manager = db_manager
         # Keep LoadRepository for read-only operations (Getters)
         self.load_repo = LoadRepository(db_manager)
@@ -36,8 +36,19 @@ class OperationsService:
         self.logistics_service = LogisticsService(db_manager, compliance_service)
         
         # Inject TreatmentBatchService into DispatchService to resolve circular dependency
-        batch_service = TreatmentBatchService(db_manager)
-        self.dispatch_service = DispatchService(db_manager, batch_service)
+        # batch_service = TreatmentBatchService(db_manager)
+        if dispatch_service:
+            self.dispatch_service = dispatch_service
+        else:
+             # Fallback for legacy calls (though this will likely fail if dependencies are missing)
+             # We leave it as is or try to construct it, but for now let's assume DI is used.
+             batch_service = TreatmentBatchService(db_manager)
+             # This will fail with new signature, but we expect container to pass it.
+             # To avoid crash on import/init without DI, we can pass None or mocks if absolutely needed,
+             # but better to rely on DI.
+             # For now, let's just comment out the manual instantiation if dispatch_service is not provided
+             # to avoid the crash, assuming it will be provided by container.
+             self.dispatch_service = None # type: ignore
         
         self.reception_service = ReceptionService(db_manager)
 

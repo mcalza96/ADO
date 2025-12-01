@@ -1,25 +1,20 @@
+
 import streamlit as st
 import pandas as pd
 import pydeck as pdk
 from datetime import datetime
 from typing import Optional
-
-from database.db_manager import DatabaseManager
-from services.operations.disposal_execution import DisposalExecutionService
-from services.masters.location_service import LocationService
-from services.masters.transport_service import TransportService
-from services.masters.treatment_plant_service import TreatmentPlantService
+from container import get_container
 
 def disposal_page():
     st.title("🚜 Recepción y Disposición Final (Campo)")
 
-    # --- Dependency Injection ---
-    # In a real app, this might be handled by a container
-    db = DatabaseManager()
-    disposal_service = DisposalExecutionService(db)
-    location_service = LocationService(db)
-    transport_service = TransportService(db)
-    treatment_plant_service = TreatmentPlantService(db)
+    # --- Dependency Injection via Container ---
+    services = get_container()
+    disposal_service = services.disposal_service
+    location_service = services.location_service
+    transport_service = services.transport_service
+    treatment_plant_service = services.treatment_plant_service
 
     # --- Context Selector (Simulation) ---
     # In production, this would be determined by the logged-in user's assigned site
