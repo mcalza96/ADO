@@ -16,7 +16,7 @@ class UserRepository(BaseRepository[User]):
             cursor.execute(f"SELECT * FROM {self.table_name} WHERE username = ?", (username,))
             row = cursor.fetchone()
             if row:
-                return self.model_cls(**dict(row))
+                return self._map_row_to_model(dict(row))
             return None
 
     def create(self, user: User, password_hash: str) -> User:

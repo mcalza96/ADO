@@ -21,7 +21,7 @@ class LoadRepository(BaseRepository[Load]):
             cursor = conn.cursor()
             cursor.execute(f"SELECT * FROM {self.table_name} WHERE status = ? ORDER BY created_at DESC", (status,))
             rows = cursor.fetchall()
-            return [self.model_cls(**dict(row)) for row in rows]
+            return [self._map_row_to_model(dict(row)) for row in rows]
 
     def get_by_origin_facility(self, facility_id: int) -> List[Load]:
         """
@@ -31,7 +31,7 @@ class LoadRepository(BaseRepository[Load]):
             cursor = conn.cursor()
             cursor.execute(f"SELECT * FROM {self.table_name} WHERE origin_facility_id = ? ORDER BY scheduled_date DESC", (facility_id,))
             rows = cursor.fetchall()
-            return [self.model_cls(**dict(row)) for row in rows]
+            return [self._map_row_to_model(dict(row)) for row in rows]
 
     def get_by_destination_and_status(self, destination_site_id: int, status: str) -> List[Load]:
         """
@@ -41,7 +41,7 @@ class LoadRepository(BaseRepository[Load]):
             cursor = conn.cursor()
             cursor.execute(f"SELECT * FROM {self.table_name} WHERE destination_site_id = ? AND status = ?", (destination_site_id, status))
             rows = cursor.fetchall()
-            return [self.model_cls(**dict(row)) for row in rows]
+            return [self._map_row_to_model(dict(row)) for row in rows]
 
     def get_pending_disposal_by_site(self, site_id: int) -> List[Load]:
         """
@@ -51,7 +51,7 @@ class LoadRepository(BaseRepository[Load]):
             cursor = conn.cursor()
             cursor.execute(f"SELECT * FROM {self.table_name} WHERE destination_site_id = ? AND status = 'PendingDisposal'", (site_id,))
             rows = cursor.fetchall()
-            return [self.model_cls(**dict(row)) for row in rows]
+            return [self._map_row_to_model(dict(row)) for row in rows]
 
     def create_load(self, load: Load) -> Load:
         """
@@ -89,7 +89,7 @@ class LoadRepository(BaseRepository[Load]):
             cursor = conn.cursor()
             cursor.execute(f"SELECT * FROM {self.table_name} WHERE status = 'InTransit' ORDER BY dispatch_time DESC")
             rows = cursor.fetchall()
-            return [self.model_cls(**dict(row)) for row in rows]
+            return [self._map_row_to_model(dict(row)) for row in rows]
     
     def get_active_loads_by_vehicle(self, vehicle_id: int) -> List[Load]:
         """
@@ -112,7 +112,7 @@ class LoadRepository(BaseRepository[Load]):
                 (vehicle_id,)
             )
             rows = cursor.fetchall()
-            return [self.model_cls(**dict(row)) for row in rows]
+            return [self._map_row_to_model(dict(row)) for row in rows]
 
     def get_delivered_by_destination_type(self, destination_type: str, destination_id: int) -> List[Load]:
         """
@@ -139,7 +139,7 @@ class LoadRepository(BaseRepository[Load]):
                 
             cursor.execute(query, params)
             rows = cursor.fetchall()
-            return [self.model_cls(**dict(row)) for row in rows]
+            return [self._map_row_to_model(dict(row)) for row in rows]
 
     def get_assignable_loads(self, vehicle_id: int) -> List[dict]:
         """

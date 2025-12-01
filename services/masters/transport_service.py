@@ -2,7 +2,9 @@ from typing import List, Optional
 from database.db_manager import DatabaseManager
 from repositories.contractor_repository import ContractorRepository
 from repositories.vehicle_repository import VehicleRepository
-from models.masters.transport import Contractor, Driver, Vehicle
+from models.masters.transport import Contractor
+from models.masters.vehicle import Vehicle
+from models.masters.driver import Driver
 from models.operations.load import Load
 from database.repository import BaseRepository
 

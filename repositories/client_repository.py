@@ -35,5 +35,5 @@ class ClientRepository(BaseRepository[Client]):
             cursor.execute(f"SELECT * FROM {self.table_name} WHERE rut = ?", (rut,))
             row = cursor.fetchone()
             if row:
-                return self.model_cls(**dict(row))
+                return self._map_row_to_model(dict(row))
             return None

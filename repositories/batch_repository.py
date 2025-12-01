@@ -18,7 +18,7 @@ class BatchRepository(BaseRepository[Batch]):
                 (facility_id,)
             )
             rows = cursor.fetchall()
-            return [self.model_cls(**dict(row)) for row in rows]
+            return [self._map_row_to_model(dict(row)) for row in rows]
 
     def get_available_batches(self, facility_id: Optional[int] = None) -> List[Batch]:
         """
@@ -37,7 +37,7 @@ class BatchRepository(BaseRepository[Batch]):
                     f"SELECT * FROM {self.table_name} WHERE status = 'Available' AND current_tonnage > 0 ORDER BY production_date ASC"
                 )
             rows = cursor.fetchall()
-            return [self.model_cls(**dict(row)) for row in rows]
+            return [self._map_row_to_model(dict(row)) for row in rows]
 
     def get_by_batch_code(self, batch_code: str) -> Optional[Batch]:
         """
@@ -49,7 +49,7 @@ class BatchRepository(BaseRepository[Batch]):
             cursor.execute(f"SELECT * FROM {self.table_name} WHERE batch_code = ?", (batch_code,))
             row = cursor.fetchone()
             if row:
-                return self.model_cls(**dict(row))
+                return self._map_row_to_model(dict(row))
             return None
 
     def update_current_tonnage(self, batch_id: int, amount: float) -> bool:

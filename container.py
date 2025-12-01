@@ -14,6 +14,7 @@ import streamlit as st
 from types import SimpleNamespace
 from database.db_manager import DatabaseManager
 from repositories.site_repository import SiteRepository
+from repositories.plot_repository import PlotRepository
 from repositories.load_repository import LoadRepository
 from repositories.site_event_repository import SiteEventRepository
 from repositories.user_repository import UserRepository
@@ -72,6 +73,7 @@ def get_container() -> SimpleNamespace:
     
     # Initialize Repositories
     site_repo = SiteRepository(db_manager)
+    plot_repo = PlotRepository(db_manager)
     load_repo = LoadRepository(db_manager)
     site_event_repo = SiteEventRepository(db_manager)
     user_repo = UserRepository(db_manager)
@@ -80,7 +82,7 @@ def get_container() -> SimpleNamespace:
     vehicle_repo = VehicleRepository(db_manager)
     
     # Initialize Services with dependency injection
-    location_service = LocationService(db_manager)
+    location_service = LocationService(site_repo, plot_repo)
     batch_service = BatchService(db_manager)
     
     # Compliance Service (needed for Manifest and Validation)

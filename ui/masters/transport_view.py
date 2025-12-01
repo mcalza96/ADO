@@ -1,6 +1,8 @@
 import streamlit as st
 from container import get_container
-from models.masters.transport import Contractor, Driver, Vehicle
+from models.masters.transport import Contractor
+from models.masters.vehicle import Vehicle
+from models.masters.driver import Driver
 
 
 def transport_page():

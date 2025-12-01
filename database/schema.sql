@@ -29,7 +29,9 @@ CREATE TABLE IF NOT EXISTS clients (
     contact_name TEXT,
     contact_email TEXT,
     address TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    is_active BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ==========================================
@@ -43,7 +45,9 @@ CREATE TABLE IF NOT EXISTS contractors (
     rut TEXT UNIQUE,
     contact_name TEXT,
     phone TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    is_active BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Drivers table: Associated with a contractor
@@ -51,9 +55,13 @@ CREATE TABLE IF NOT EXISTS drivers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     contractor_id INTEGER NOT NULL,
     name TEXT NOT NULL,
-    rut TEXT UNIQUE,
+    rut TEXT UNIQUE, -- Renamed from rut_dni in requirements to match convention, mapped in model
     license_number TEXT,
+    license_type TEXT, -- New field
+    signature_image_path TEXT, -- New field
     is_active BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (contractor_id) REFERENCES contractors(id) ON DELETE CASCADE
 );
 
@@ -64,11 +72,29 @@ CREATE TABLE IF NOT EXISTS vehicles (
     brand TEXT,
     model TEXT,
     license_plate TEXT NOT NULL UNIQUE,
-    max_capacity REAL NOT NULL, -- In Kg
+    capacity_wet_tons REAL NOT NULL, -- Renamed from max_capacity
     tare_weight REAL NOT NULL, -- In Kg
     is_active BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (contractor_id) REFERENCES contractors(id) ON DELETE CASCADE
 );
+
+-- Containers table: Roll-off containers (Tolvas)
+CREATE TABLE IF NOT EXISTS containers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE, -- Visual ID painted on container, e.g., "TOLVA-204"
+    contractor_id INTEGER NOT NULL,
+    capacity_m3 REAL NOT NULL, -- Theoretical volume in cubic meters
+    status TEXT NOT NULL CHECK (status IN ('AVAILABLE', 'MAINTENANCE', 'DECOMMISSIONED')) DEFAULT 'AVAILABLE',
+    is_active BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (contractor_id) REFERENCES contractors(id) ON DELETE CASCADE
+);
+
+-- Index for optimized searches by contractor and status
+CREATE INDEX IF NOT EXISTS idx_containers_contractor ON containers(contractor_id, status);
 
 -- ==========================================
 -- Treatment Module (Origin)
@@ -83,6 +109,8 @@ CREATE TABLE IF NOT EXISTS facilities (
     latitude REAL,
     longitude REAL,
     is_active BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
 );
 
@@ -121,11 +149,11 @@ CREATE TABLE IF NOT EXISTS sites (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     owner_name TEXT,
-    address TEXT,
+    address_reference TEXT,
     region TEXT,
-    latitude REAL,
-    longitude REAL,
-    is_active BOOLEAN DEFAULT 1
+    is_active BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ==========================================
@@ -137,11 +165,16 @@ CREATE TABLE IF NOT EXISTS plots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     site_id INTEGER NOT NULL,
     name TEXT NOT NULL, -- e.g., 'Sector 1', 'Lote Norte'
-    area_hectares REAL,
-    crop_type TEXT, -- e.g., 'Corn', 'Wheat'
+    area_acres REAL,
+    geometry_wkt TEXT, -- Well-Known Text for polygons
     is_active BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
 );
+
+-- Index for faster lookups by site
+CREATE INDEX IF NOT EXISTS idx_plots_site_id ON plots(site_id);
 
 -- Soil Samples table: Analysis of the plot soil
 CREATE TABLE IF NOT EXISTS soil_samples (

@@ -1,23 +1,32 @@
-from typing import Optional
+from typing import List, Optional
 from database.repository import BaseRepository
-from database.db_manager import DatabaseManager
 from models.masters.location import Site, Plot
+from database.db_manager import DatabaseManager
+from repositories.plot_repository import PlotRepository
 
 class SiteRepository(BaseRepository[Site]):
+    """
+    Repository for Site entity (Granjas/Fundos).
+    """
+    
     def __init__(self, db_manager: DatabaseManager):
         super().__init__(db_manager, Site, "sites")
+        # We initialize PlotRepository lazily or pass it? 
+        # For simplicity, we can instantiate it here or use a separate query.
+        # Ideally, we should avoid circular deps. PlotRepository depends on nothing but DB.
+        self.plot_repository = PlotRepository(db_manager)
+    
+    def get_by_id(self, id: int, include_plots: bool = False) -> Optional[Site]:
+        """
+        Get a site by ID, optionally including its plots.
+        """
+        site = super().get_by_id(id)
+        if site and include_plots:
+            site.plots = self.plot_repository.get_by_site_id(site.id)
+        return site
 
-    def get_active_plot(self, site_id: int) -> Optional[Plot]:
+    def get_all_ordered(self) -> List[Site]:
         """
-        Retrieves the currently active plot for a given site.
-        Assumes a site has one active plot at a time for simplicity, 
-        or returns the first one found.
+        Returns all sites ordered by name.
         """
-        with self.db_manager as conn:
-            cursor = conn.cursor()
-            # Assuming table name 'plots' and it has 'site_id' and 'is_active'
-            cursor.execute("SELECT * FROM plots WHERE site_id = ? AND is_active = 1", (site_id,))
-            row = cursor.fetchone()
-            if row:
-                return Plot(**dict(row))
-            return None
+        return self.get_all(order_by="name")

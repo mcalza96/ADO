@@ -30,7 +30,8 @@ class FacilityRepository(BaseRepository[Facility]):
                 (client_id,)
             )
             rows = cursor.fetchall()
-            return [self.model_cls(**dict(row)) for row in rows]
+            rows = cursor.fetchall()
+            return [self._map_row_to_model(dict(row)) for row in rows]
     
     def get_all_active(self) -> List[Facility]:
         """
@@ -42,7 +43,8 @@ class FacilityRepository(BaseRepository[Facility]):
                 f"SELECT * FROM {self.table_name} WHERE is_active = 1 ORDER BY name"
             )
             rows = cursor.fetchall()
-            return [self.model_cls(**dict(row)) for row in rows]
+            rows = cursor.fetchall()
+            return [self._map_row_to_model(dict(row)) for row in rows]
     
     def update_allowed_vehicle_types(self, facility_id: int, allowed_types: str) -> bool:
         """

@@ -1,54 +1,158 @@
 import streamlit as st
 from container import get_container
+from models.masters.container import Container
 
 def containers_view():
-    st.title("📦 Gestión de Contenedores")
+    st.title("📦 Gestión de Contenedores (Tolvas)")
     
     services = get_container()
-    service = services.container_service
-    plant_service = services.treatment_plant_service
+    container_service = services.container_service
+    contractor_service = services.contractor_service
     
     # Create New Container
     with st.expander("➕ Nuevo Contenedor", expanded=False):
         with st.form("new_container"):
-            code = st.text_input("Código del Contenedor (ej. CONT-001)")
+            st.subheader("Datos del Contenedor")
             
-            plants = plant_service.get_all_plants()
-            plant_opts = {p.name: p.id for p in plants}
-            plant_opts["Sin Asignar"] = None
+            code = st.text_input(
+                "Código del Contenedor *", 
+                placeholder="ej. TOLVA-204",
+                help="Código visual pintado en el contenedor"
+            )
             
-            sel_plant = st.selectbox("Ubicación Inicial", list(plant_opts.keys()))
-            
-            if st.form_submit_button("Crear Contenedor"):
-                try:
-                    service.create_container(code, plant_opts[sel_plant])
-                    st.success(f"Contenedor {code} creado exitosamente.")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Error: {e}")
+            # Get active contractors
+            contractors = contractor_service.get_all_contractors(active_only=True)
+            if not contractors:
+                st.warning("⚠️ No hay contratistas activos. Debe crear un contratista antes de registrar contenedores.")
+                st.form_submit_button("Crear Contenedor", disabled=True)
+            else:
+                contractor_opts = {f"{c.name} ({c.rut or 'Sin RUT'})": c.id for c in contractors}
+                sel_contractor = st.selectbox("Contratista *", list(contractor_opts.keys()))
+                
+                capacity_m3 = st.number_input(
+                    "Capacidad (m³) *", 
+                    min_value=5.0, 
+                    max_value=40.0, 
+                    value=20.0, 
+                    step=1.0,
+                    help="Capacidad volumétrica entre 5 y 40 m³"
+                )
+                
+                status = st.selectbox(
+                    "Estado Inicial",
+                    ["AVAILABLE", "MAINTENANCE", "DECOMMISSIONED"],
+                    help="AVAILABLE: Disponible para uso | MAINTENANCE: En mantenimiento | DECOMMISSIONED: Dado de baja"
+                )
+                
+                if st.form_submit_button("Crear Contenedor"):
+                    if not code or not code.strip():
+                        st.error("El código del contenedor es obligatorio.")
+                    else:
+                        try:
+                            container = Container(
+                                id=None,
+                                contractor_id=contractor_opts[sel_contractor],
+                                code=code.strip(),
+                                capacity_m3=capacity_m3,
+                                status=status
+                            )
+                            container_service.save(container)
+                            st.success(f"✅ Contenedor {code} creado exitosamente ({capacity_m3}m³)")
+                            st.rerun()
+                        except ValueError as e:
+                            st.error(f"❌ Error de validación: {e}")
+                        except Exception as e:
+                            st.error(f"❌ Error al crear contenedor: {e}")
     
     st.divider()
     
+    # Filter Options
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        filter_contractor = st.selectbox(
+            "Filtrar por Contratista",
+            ["Todos"] + [c.name for c in contractors] if contractors else ["Todos"],
+            key="filter_contractor"
+        )
+    with col2:
+        show_inactive = st.checkbox("Mostrar Inactivos", value=False)
+    
     # List Containers
-    containers = service.get_all_containers()
+    if filter_contractor == "Todos":
+        containers = container_service.get_all_containers(active_only=not show_inactive)
+    else:
+        contractor_id = next((c.id for c in contractors if c.name == filter_contractor), None)
+        if contractor_id:
+            containers = container_service.get_by_contractor(contractor_id, active_only=not show_inactive)
+        else:
+            containers = []
+    
     if not containers:
-        st.info("No hay contenedores registrados.")
+        st.info("📦 No hay contenedores registrados con los filtros seleccionados.")
         return
-        
+    
+    st.subheader(f"Contenedores Registrados ({len(containers)})")
+    
+    # Display containers with actions
     data = []
     for c in containers:
-        # Find plant name if assigned
-        plant_name = "N/A"
-        if c.current_plant_id:
-            # Inefficient but fine for MVP
-            p = next((p for p in plants if p.id == c.current_plant_id), None)
-            if p: plant_name = p.name
-            
+        # Format status with emoji
+        status_emoji = {
+            'AVAILABLE': '✅',
+            'MAINTENANCE': '🔧',
+            'DECOMMISSIONED': '🚫'
+        }
+        
         data.append({
             "ID": c.id,
             "Código": c.code,
-            "Estado": c.status,
-            "Ubicación Actual": plant_name
+            "Display": c.display_name,
+            "Contratista": c.contractor_name or "N/A",
+            "Capacidad (m³)": c.capacity_m3,
+            "Estado": f"{status_emoji.get(c.status, '❓')} {c.status}",
+            "Activo": "✓" if c.is_active else "✗"
         })
-        
+    
     st.dataframe(data, use_container_width=True)
+    
+    # Actions section
+    st.divider()
+    with st.expander("🔧 Acciones sobre Contenedores"):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Cambiar Estado")
+            container_ids = {f"{c.code} - {c.display_name}": c.id for c in containers if c.is_active}
+            if container_ids:
+                sel_container_status = st.selectbox("Seleccionar Contenedor", list(container_ids.keys()), key="status_change")
+                new_status = st.selectbox("Nuevo Estado", ["AVAILABLE", "MAINTENANCE", "DECOMMISSIONED"], key="new_status")
+                
+                if st.button("Actualizar Estado"):
+                    try:
+                        container_id = container_ids[sel_container_status]
+                        container = container_service.get_container_by_id(container_id)
+                        if container:
+                            container.status = new_status
+                            container_service.save(container)
+                            st.success(f"✅ Estado actualizado a {new_status}")
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Error: {e}")
+            else:
+                st.info("No hay contenedores activos")
+        
+        with col2:
+            st.subheader("Eliminar Contenedor (Soft Delete)")
+            if container_ids:
+                sel_container_delete = st.selectbox("Seleccionar Contenedor", list(container_ids.keys()), key="delete_select")
+                
+                if st.button("🗑️ Desactivar Contenedor", type="secondary"):
+                    try:
+                        container_id = container_ids[sel_container_delete]
+                        container_service.delete_container(container_id)
+                        st.success("✅ Contenedor desactivado")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Error: {e}")
+            else:
+                st.info("No hay contenedores activos")

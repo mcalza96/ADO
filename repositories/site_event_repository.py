@@ -12,4 +12,4 @@ class SiteEventRepository(BaseRepository[SiteEvent]):
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM site_events WHERE site_id = ? ORDER BY event_date DESC", (site_id,))
             rows = cursor.fetchall()
-            return [self.model_cls(**dict(row)) for row in rows]
+            return [self._map_row_to_model(dict(row)) for row in rows]
