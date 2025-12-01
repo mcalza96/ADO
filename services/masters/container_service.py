@@ -99,6 +99,14 @@ class ContainerService:
         """
         return self.repository.get_by_contractor(contractor_id, active_only)
 
+    def get_available_containers(self, plant_id: int = None) -> List[Container]:
+        """
+        Get containers with AVAILABLE status.
+        If plant_id is provided, filter by location (future enhancement).
+        """
+        all_containers = self.repository.get_all_active()
+        return [c for c in all_containers if c.status == 'AVAILABLE']
+
     def get_container_by_id(self, container_id: int) -> Optional[Container]:
         """
         Get a single container by ID.

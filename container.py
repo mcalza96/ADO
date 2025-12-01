@@ -44,6 +44,7 @@ from services.masters.container_service import ContainerService
 from services.masters.disposal_service import DisposalService as MasterDisposalService
 from services.masters.treatment_service import TreatmentService
 from services.operations_service import OperationsService
+from services.masters.contractor_service import ContractorService
 from services.operations.dashboard_service import DashboardService
 
 @st.cache_resource
@@ -128,6 +129,7 @@ def get_container() -> SimpleNamespace:
     
     # Master Services
     client_service = ClientService(db_manager)
+    contractor_service = ContractorService(db_manager)
     treatment_plant_service = TreatmentPlantService(db_manager)
     container_service = ContainerService(db_manager)
     master_disposal_service = MasterDisposalService(db_manager)
@@ -155,6 +157,7 @@ def get_container() -> SimpleNamespace:
         logistics_service=logistics_service,
         treatment_reception_service=treatment_reception_service,
         client_service=client_service,
+        contractor_service=contractor_service,
         treatment_plant_service=treatment_plant_service,
         container_service=container_service,
         master_disposal_service=master_disposal_service,

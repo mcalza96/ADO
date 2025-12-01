@@ -30,8 +30,11 @@ class FacilityRepository(BaseRepository[Facility]):
                 (client_id,)
             )
             rows = cursor.fetchall()
-            rows = cursor.fetchall()
             return [self._map_row_to_model(dict(row)) for row in rows]
+
+    def get_by_client_id(self, client_id: int) -> List[Facility]:
+        """Alias for get_by_client to match service expectations."""
+        return self.get_by_client(client_id)
     
     def get_all_active(self) -> List[Facility]:
         """
@@ -42,7 +45,6 @@ class FacilityRepository(BaseRepository[Facility]):
             cursor.execute(
                 f"SELECT * FROM {self.table_name} WHERE is_active = 1 ORDER BY name"
             )
-            rows = cursor.fetchall()
             rows = cursor.fetchall()
             return [self._map_row_to_model(dict(row)) for row in rows]
     

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 from datetime import datetime
 
@@ -11,11 +11,16 @@ class Vehicle:
     capacity_wet_tons: float
     brand: Optional[str] = None
     model: Optional[str] = None
-    year: Optional[int] = None # Not in DB schema explicitly but in previous model, keeping for now or removing? Schema doesn't have year. I will keep it optional or remove if not in DB. Schema has brand, model. Previous model had year. I'll keep it but it won't be persisted unless I add column. Wait, schema.sql does NOT have year. I will remove it to match schema or add it to schema. Plan didn't mention year. I will remove it to be safe and consistent with schema.
-    type: str = 'BATEA' # BATEA, AMPLIROLL - Not in schema explicitly? Schema doesn't have type. Previous model had it. I will remove it or add to schema. Schema has brand, model, license_plate, capacity, tare. No type. I will remove it.
+    year: Optional[int] = None
+    type: str = 'BATEA' # BATEA, AMPLIROLL
     is_active: bool = True
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     
-    # Joined fields (for display)
-    contractor_name: Optional[str] = None
+    # Joined fields (for display only, not persisted)
+    contractor_name: Optional[str] = field(default=None, compare=False)
+    
+    @property
+    def max_capacity(self) -> float:
+        """Alias for capacity_wet_tons for backward compatibility"""
+        return self.capacity_wet_tons

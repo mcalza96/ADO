@@ -5,12 +5,13 @@ from models.masters.client import Client
 from models.masters.location import Facility
 
 
-def clients_page():
+def clients_page(treatment_plant_service=None):
     st.header("Gestión de Clientes (Generadores)")
     
     services = get_container()
     client_service = services.client_service
     location_service = services.location_service
+    treatment_plant_service = treatment_plant_service or services.treatment_plant_service
     
     # Form to add new client
     with st.expander("➕ Agregar Nuevo Cliente"):
@@ -116,7 +117,7 @@ def clients_page():
         
         # Display facilities for selected client
         st.markdown(f"**Plantas del Cliente Seleccionado:**")
-        facilities = location_service.get_facilities_by_client(selected_client_id)
+        facilities = treatment_plant_service.get_facilities_by_client(selected_client_id)
         if facilities:
             for fac in facilities:
                 with st.container():

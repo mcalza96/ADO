@@ -47,6 +47,8 @@ def run_migrations():
         except Exception as e:
             print(f"Migration failed: {e}")
 
+from container import get_container
+
 def main():
     # Initialize session state for user
     if 'user' not in st.session_state:
@@ -58,6 +60,10 @@ def main():
     else:
         # Main App Layout
         user = st.session_state['user']
+        
+        # Get Services from Container
+        services = get_container()
+        treatment_plant_service = services.treatment_plant_service
         
         # Sidebar Navigation
         with st.sidebar:
@@ -106,15 +112,15 @@ def main():
                 client_portal_page()
 
         elif module == "Portal Clientes":
-            requests_page()
+            requests_page(treatment_plant_service=treatment_plant_service)
             
         elif module == "Transporte":
             if sub_menu == "Planificación":
-                planning_page()
+                planning_page(treatment_plant_service=treatment_plant_service)
             elif sub_menu == "Despacho":
-                dispatch_view()
+                dispatch_view(treatment_plant_service=treatment_plant_service)
             elif sub_menu == "Recepción":
-                reception_view()
+                reception_view(treatment_plant_service=treatment_plant_service)
             elif sub_menu == "Operaciones (Legacy)":
                 operations_page()
                 
@@ -127,7 +133,7 @@ def main():
         elif module == "Configuración":
             tab_conf1, tab_conf2 = st.tabs(["General", "Contenedores"])
             with tab_conf1:
-                config_page()
+                config_page(treatment_plant_service=treatment_plant_service)
             with tab_conf2:
                 containers_view()
 

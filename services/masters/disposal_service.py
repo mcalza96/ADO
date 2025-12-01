@@ -37,7 +37,7 @@ class DisposalService:
 
     # --- Plots ---
     def get_plots_by_site(self, site_id: int) -> List[Plot]:
-        return self.plot_repo.get_by_site(site_id)
+        return self.plot_repo.get_by_site_id(site_id)
 
     def create_plot(self, plot: Plot) -> Plot:
         return self.plot_repo.add(plot)

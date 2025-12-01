@@ -4,13 +4,14 @@ from models.masters.location import Facility
 from models.masters.treatment import Batch, LabResult
 import datetime
 
-def treatment_page():
+def treatment_page(treatment_plant_service=None):
     st.header("Gestión de Plantas y Tratamiento")
     
     services = get_container()
     treatment_service = services.treatment_service
     client_service = services.client_service
     location_service = services.location_service
+    treatment_plant_service = treatment_plant_service or services.treatment_plant_service
     
     # 1. Select Client
     clients = client_service.get_all_clients()
@@ -43,7 +44,7 @@ def treatment_page():
                 except Exception as e:
                     st.error(f"Error: {e}")
 
-    facilities = location_service.get_facilities_by_client(selected_client_id)
+    facilities = treatment_plant_service.get_facilities_by_client(selected_client_id)
     
     if not facilities:
         st.info("No hay plantas registradas para este cliente.")

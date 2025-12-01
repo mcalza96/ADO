@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Optional
 from container import get_container
 
-def disposal_page():
+def disposal_page(treatment_plant_service=None):
     st.title("🚜 Recepción y Disposición Final (Campo)")
 
     # --- Dependency Injection via Container ---
@@ -14,7 +14,7 @@ def disposal_page():
     disposal_service = services.disposal_service
     location_service = services.location_service
     transport_service = services.transport_service
-    treatment_plant_service = services.treatment_plant_service
+    treatment_plant_service = treatment_plant_service or services.treatment_plant_service
 
     # --- Context Selector (Simulation) ---
     # In production, this would be determined by the logged-in user's assigned site
@@ -50,7 +50,7 @@ def disposal_page():
     for load in pending_loads:
         # Resolve Names
         if load.origin_facility_id:
-            fac = location_service.get_facility_by_id(load.origin_facility_id)
+            fac = treatment_plant_service.get_by_id(load.origin_facility_id)
             origin = fac.name if fac else f"Fac-{load.origin_facility_id}"
         elif load.origin_treatment_plant_id:
             plant = treatment_plant_service.get_plant_by_id(load.origin_treatment_plant_id)

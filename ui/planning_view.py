@@ -13,7 +13,7 @@ from services.masters.transport_service import TransportService
 from services.masters.location_service import LocationService
 from services.masters.treatment_plant_service import TreatmentPlantService
 
-def planning_page():
+def planning_page(treatment_plant_service=None):
     st.title("🗓️ Tablero de Planificación (Control Tower)")
 
     # --- Dependency Injection via Container ---
@@ -22,7 +22,8 @@ def planning_page():
     logistics_service = services.logistics_service
     transport_service = services.transport_service
     location_service = services.location_service
-    treatment_plant_service = services.treatment_plant_service
+    # Use passed service or get from container
+    treatment_plant_service = treatment_plant_service or services.treatment_plant_service
 
     # --- Tabs ---
     tab_backlog, tab_scheduled = st.tabs(["🔴 Por Planificar (Backlog)", "✅ Planificadas"])
@@ -41,7 +42,7 @@ def planning_page():
             for load in requested_loads:
                 # Resolve Origin Name
                 if load.origin_facility_id:
-                    fac = location_service.get_facility_by_id(load.origin_facility_id)
+                    fac = treatment_plant_service.get_by_id(load.origin_facility_id)
                     origin = fac.name if fac else f"Facility {load.origin_facility_id}"
                 elif load.origin_treatment_plant_id:
                     plant = treatment_plant_service.get_plant_by_id(load.origin_treatment_plant_id)
@@ -193,7 +194,7 @@ def planning_page():
             for load in scheduled_loads:
                 # Resolve Origin
                 if load.origin_facility_id:
-                    fac = location_service.get_facility_by_id(load.origin_facility_id)
+                    fac = treatment_plant_service.get_by_id(load.origin_facility_id)
                     origin = fac.name if fac else str(load.origin_facility_id)
                 else:
                     plant = treatment_plant_service.get_plant_by_id(load.origin_treatment_plant_id)

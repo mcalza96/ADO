@@ -30,7 +30,6 @@ class VehicleRepository(BaseRepository[Vehicle]):
                 (contractor_id,)
             )
             rows = cursor.fetchall()
-            rows = cursor.fetchall()
             return [self._map_row_to_model(dict(row)) for row in rows]
     
     def get_by_license_plate(self, license_plate: str) -> Optional[Vehicle]:
@@ -70,6 +69,5 @@ class VehicleRepository(BaseRepository[Vehicle]):
                 ORDER BY v.license_plate
                 """
             )
-            rows = cursor.fetchall()
             rows = cursor.fetchall()
             return [self._map_row_to_model(dict(row)) for row in rows]

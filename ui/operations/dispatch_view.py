@@ -4,7 +4,7 @@ from datetime import datetime
 from container import get_container
 from ui.styles import apply_industrial_style
 
-def dispatch_view():
+def dispatch_view(treatment_plant_service=None):
     """
     Vista del Conductor "Mi Ruta".
     Flujo lineal: Scheduled -> Accepted -> InTransit -> Arrived -> Delivered.
@@ -16,6 +16,7 @@ def dispatch_view():
     services = get_container()
     transport_service = services.transport_service
     dispatch_service = services.dispatch_service
+    treatment_plant_service = treatment_plant_service or services.treatment_plant_service
     
     # --- 1. Selector de Vehículo ---
     # Load active vehicles
