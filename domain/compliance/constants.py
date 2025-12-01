@@ -12,3 +12,6 @@ EPA_CEILING_LIMITS = {
 
 # Site Restrictions
 RESTRICTED_SITE_TYPES = ['Public Park', 'Home Garden', 'School', 'Playground']
+
+# Agronomy Limits
+MAX_N_PER_HA = 200.0 # kg/ha

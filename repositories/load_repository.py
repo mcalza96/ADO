@@ -73,6 +73,56 @@ class LoadRepository(BaseRepository[Load]):
             rows = cursor.fetchall()
             return [self._map_row_to_model(dict(row)) for row in rows]
 
+    def get_active_load(self, vehicle_id: int) -> Optional[Load]:
+        """
+        Returns the active load for a specific vehicle, if any.
+        """
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"SELECT * FROM {self.table_name} WHERE vehicle_id = ? AND status NOT IN ('COMPLETED', 'CANCELLED') LIMIT 1",
+                (vehicle_id,)
+            )
+            row = cursor.fetchone()
+            return self._map_row_to_model(dict(row)) if row else None
+
+    def get_assignable_loads(self, vehicle_id: int) -> List[Load]:
+        """
+        Returns loads that can be assigned to a vehicle (e.g., 'Scheduled').
+        """
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            # Assuming assignable loads are those with status 'Scheduled'
+            # The vehicle_id parameter might be used for filtering if loads are pre-assigned to a vehicle
+            cursor.execute(
+                f"SELECT * FROM {self.table_name} WHERE status = 'Scheduled' ORDER BY created_at ASC"
+            )
+            rows = cursor.fetchall()
+            return [self._map_row_to_model(dict(row)) for row in rows]
+
+    def get_delivered_by_destination_type(self, destination_type: str, destination_id: int) -> List[Load]:
+        """
+        Returns loads that have been delivered (e.g., 'ARRIVED' or 'DISPATCHED') filtered by destination type and ID.
+        """
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            
+            query = f"SELECT * FROM {self.table_name} WHERE status IN ('ARRIVED', 'DISPATCHED')"
+            params = []
+            
+            if destination_type == 'TreatmentPlant':
+                query += " AND destination_treatment_plant_id = ?"
+                params.append(destination_id)
+            elif destination_type == 'Site':
+                query += " AND destination_site_id = ?"
+                params.append(destination_id)
+                
+            query += " ORDER BY created_at DESC"
+            
+            cursor.execute(query, tuple(params))
+            rows = cursor.fetchall()
+            return [self._map_row_to_model(dict(row)) for row in rows]
+
     def get_by_status(self, status: str, limit: int = 50) -> List[Load]:
         """
         Returns loads filtered by status, ordered by created_at DESC.

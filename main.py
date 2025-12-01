@@ -69,7 +69,8 @@ def main():
         contractor_service = services.contractor_service
         container_service = services.container_service
         location_service = services.location_service
-        transport_service = services.transport_service
+        driver_service = services.driver_service
+        vehicle_service = services.vehicle_service
         auth_service = services.auth_service
         
         # Sidebar Navigation
@@ -144,7 +145,8 @@ def main():
                 treatment_plant_service=treatment_plant_service,
                 container_service=container_service,
                 location_service=location_service,
-                transport_service=transport_service,
+                driver_service=driver_service,
+                vehicle_service=vehicle_service,
                 auth_service=auth_service
             )
 

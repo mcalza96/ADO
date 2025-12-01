@@ -7,7 +7,7 @@ def operations_page():
     st.title("🚛 OPERACIONES - EJECUCIÓN")
     
     services = get_container()
-    ops_service = services.operations_service
+    ops_service = services.logistics_service
     treatment_service = services.treatment_service
     disposal_service = services.master_disposal_service
     

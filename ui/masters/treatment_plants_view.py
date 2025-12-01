@@ -23,7 +23,7 @@ def treatment_plants_page(treatment_plant_service=None):
                     st.error("El nombre es obligatorio.")
     
     # List
-    plants = service.get_all_plants()
+    plants = service.get_all()
     if plants:
         st.dataframe([
             {"ID": p.id, "Nombre": p.name, "Dirección": p.address}

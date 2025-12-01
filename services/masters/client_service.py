@@ -11,9 +11,8 @@ class ClientService:
     Implements the Service Pattern for client management.
     """
     
-    def __init__(self, db_manager: DatabaseManager):
-        self.db_manager = db_manager
-        self.repository = ClientRepository(db_manager)
+    def __init__(self, client_repository: ClientRepository):
+        self.repository = client_repository
 
     def get_all_clients(self, active_only: bool = True) -> List[Client]:
         """

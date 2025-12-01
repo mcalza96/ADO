@@ -1,13 +1,14 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-from services.reporting.reporting_service import ReportingService
+from container import get_container
 from database.db_manager import DatabaseManager
 
 def agronomy_dashboard_page():
     st.header("Drill-Down Agronómico")
     
-    service = ReportingService()
+    services = get_container()
+    service = services.reporting_service
     
     # Select Site (Master Filter)
     # We need to list sites first.

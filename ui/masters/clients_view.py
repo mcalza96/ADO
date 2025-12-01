@@ -115,7 +115,7 @@ def clients_page(treatment_plant_service=None):
         
         # Display facilities for selected client
         st.markdown(f"**Plantas del Cliente Seleccionado:**")
-        facilities = treatment_plant_service.get_facilities_by_client(selected_client_id)
+        facilities = treatment_plant_service.get_by_client(selected_client_id)
         if facilities:
             for fac in facilities:
                 with st.container():

@@ -10,7 +10,8 @@ def config_page(
     treatment_plant_service,
     container_service,
     location_service,
-    transport_service,
+    driver_service,
+    vehicle_service,
     auth_service
 ):
     """
@@ -23,7 +24,8 @@ def config_page(
         treatment_plant_service: TreatmentPlantService instance
         container_service: ContainerService instance
         location_service: LocationService instance
-        transport_service: TransportService instance
+        driver_service: DriverService instance
+        vehicle_service: VehicleService instance
         auth_service: AuthService instance
     """
     st.title("⚙️ Configuración del Sistema")
@@ -74,7 +76,7 @@ def config_page(
         
         if transport_section in ["Contratistas", "Vehículos", "Conductores"]:
             # Use refactored transport_view with dependency injection
-            transport_view.render(transport_service, contractor_service)
+            transport_view.render(driver_service, vehicle_service, contractor_service)
         
         elif transport_section == "Contenedores":
             # Use refactored containers_view with dependency injection

@@ -5,18 +5,22 @@ from datetime import datetime
 @dataclass
 class Load:
     id: Optional[int]
-    manifest_code: Optional[str]
     origin_facility_id: int
-    contractor_id: int
     vehicle_id: int
     driver_id: int
     destination_site_id: int
-    destination_plot_id: int
+    
+    # Fields that might be missing in older records or specific flows
+    manifest_code: Optional[str] = None
+    contractor_id: Optional[int] = None
+    destination_plot_id: Optional[int] = None
     
     # Optional/Nullable fields
     container_id: Optional[int] = None
     batch_id: Optional[int] = None # Legacy/Compatibility
     treatment_batch_id: Optional[int] = None # Link to operational batch
+    origin_treatment_plant_id: Optional[int] = None
+    destination_treatment_plant_id: Optional[int] = None
     
     # Operational Data
     material_class: Optional[str] = None
@@ -26,6 +30,8 @@ class Load:
     
     # Status and Timing
     status: str = 'CREATED'
+    requested_date: Optional[datetime] = None
+    scheduled_date: Optional[datetime] = None
     dispatch_time: Optional[datetime] = None
     arrival_time: Optional[datetime] = None
     

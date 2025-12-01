@@ -4,12 +4,13 @@ from models.masters.vehicle import Vehicle
 from models.masters.driver import Driver
 
 
-def render(transport_service, contractor_service):
+def render(driver_service, vehicle_service, contractor_service):
     """
     Vista de gestión de Transporte con inyección de dependencias.
     
     Args:
-        transport_service: TransportService instance
+        driver_service: DriverService instance
+        vehicle_service: VehicleService instance
         contractor_service: ContractorService instance
     """
     st.header("🚛 Gestión de Transporte")
@@ -67,13 +68,13 @@ def render(transport_service, contractor_service):
                                 rut=d_rut, 
                                 license_number=d_license
                             )
-                            transport_service.create_driver(d)
+                            driver_service.save(d)
                             st.success("✅ Chofer creado exitosamente")
                             st.rerun()
                         except Exception as e:
                             st.error(f"❌ Error al crear chofer: {e}")
 
-            drivers = transport_service.get_drivers_by_contractor(selected_contractor_id)
+            drivers = driver_service.get_drivers_by_contractor(selected_contractor_id)
             if drivers:
                 st.dataframe([vars(d) for d in drivers], use_container_width=True)
             else:
@@ -119,7 +120,7 @@ def render(transport_service, contractor_service):
                                     year=year, 
                                     type=v_type  # Correct field name
                                 )
-                                transport_service.create_vehicle(v)
+                                vehicle_service.save(v)
                                 st.success("✅ Camión registrado exitosamente")
                                 st.rerun()
                         except ValueError as ve:
@@ -127,7 +128,7 @@ def render(transport_service, contractor_service):
                         except Exception as e:
                             st.error(f"❌ Error al registrar camión: {e}")
             
-            vehicles = transport_service.get_vehicles_by_contractor(v_contractor_id)
+            vehicles = vehicle_service.get_vehicles_by_contractor(v_contractor_id)
             if vehicles:
                 st.dataframe([vars(v) for v in vehicles], use_container_width=True)
             else:

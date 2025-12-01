@@ -14,13 +14,14 @@ def dispatch_view(treatment_plant_service=None):
     
     # Dependency Injection
     services = get_container()
-    transport_service = services.transport_service
+    vehicle_service = services.vehicle_service
     dispatch_service = services.dispatch_service
+    location_service = services.location_service
     treatment_plant_service = treatment_plant_service or services.treatment_plant_service
     
     # --- 1. Selector de Vehículo ---
     # Load active vehicles
-    vehicles = transport_service.get_all_active_vehicles()
+    vehicles = vehicle_service.get_all_vehicles(active_only=True)
     
     if not vehicles:
         st.error("No hay vehículos activos registrados en el sistema.")
@@ -51,35 +52,47 @@ def dispatch_view(treatment_plant_service=None):
 
     # --- 2. Obtener Cargas ---
     # Use new repository methods
-    # First check for active load (Accepted, InTransit, Arrived)
-    active_load_dict = services.transport_service.load_repo.get_active_load(selected_vehicle.id)
-    
-    current_load = None
-    if active_load_dict:
-        current_load = active_load_dict
-    else:
-        # If no active load, check for scheduled loads
-        scheduled_loads = services.transport_service.load_repo.get_assignable_loads(selected_vehicle.id)
-        if scheduled_loads:
-            # Show list to accept
-            st.info(f"Tienes {len(scheduled_loads)} viaje(s) asignado(s).")
+    # Check for Active Load (InTransit or Arrived)
+    active_load = dispatch_service.load_repo.get_active_load(selected_vehicle.id)
+    current_load = active_load
+
+    # Check for Scheduled Loads (Assigned to this vehicle but not started)
+    scheduled_loads = dispatch_service.load_repo.get_assignable_loads(selected_vehicle.id)
+    if scheduled_loads:
+        # Show list to accept
+        st.info(f"Tienes {len(scheduled_loads)} viaje(s) asignado(s).")
+        
+        # Display cards for scheduled loads
+        for load in scheduled_loads:
+            # Resolve names
+            origin_name = "N/A"
+            if load.origin_facility_id:
+                fac = treatment_plant_service.get_by_id(load.origin_facility_id)
+                origin_name = fac.name if fac else str(load.origin_facility_id)
             
-            # Display cards for scheduled loads
-            for load in scheduled_loads:
-                with st.container(border=True):
-                    c1, c2 = st.columns([3, 1])
-                    with c1:
-                        st.markdown(f"**Origen:** {load.get('origin_facility_name', 'N/A')}")
-                        st.markdown(f"**Destino:** {load.get('destination_site_name', 'N/A')}")
-                        st.caption(f"ID: {load['id']} | Fecha: {load.get('scheduled_date', 'N/A')}")
-                    with c2:
-                        if st.button("👍 Aceptar", key=f"accept_{load['id']}", use_container_width=True, type="primary"):
-                            try:
-                                dispatch_service.accept_trip(load['id'])
-                                st.success("Viaje aceptado.")
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Error: {str(e)}")
+            dest_name = "N/A"
+            if load.destination_site_id:
+                site = location_service.site_repo.get_by_id(load.destination_site_id)
+                dest_name = site.name if site else str(load.destination_site_id)
+            elif load.destination_treatment_plant_id: # Assuming this field exists in Load
+                 # If destination is a plant (internal transfer)
+                 plant = treatment_plant_service.get_by_id(load.destination_treatment_plant_id)
+                 dest_name = plant.name if plant else str(load.destination_treatment_plant_id)
+
+            with st.container(border=True):
+                c1, c2 = st.columns([3, 1])
+                with c1:
+                    st.markdown(f"**Origen:** {origin_name}")
+                    st.markdown(f"**Destino:** {dest_name}")
+                    st.caption(f"ID: {load.id} | Fecha: {load.scheduled_date}")
+                with c2:
+                    if st.button("👍 Aceptar", key=f"accept_{load.id}", use_container_width=True, type="primary"):
+                        try:
+                            dispatch_service.accept_trip(load.id)
+                            st.success("Viaje aceptado.")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
             return
         else:
             st.success(f"✅ No tienes viajes pendientes para la patente {selected_plate}.")
@@ -87,10 +100,23 @@ def dispatch_view(treatment_plant_service=None):
             return
 
     # Extract data from dict (repo returns dicts now)
-    load_id = current_load['id']
-    status = current_load['status']
-    origin_name = current_load.get('origin_facility_name', 'Origen Desconocido')
-    dest_name = current_load.get('destination_site_name', 'Destino Desconocido')
+    if current_load:
+        load_id = current_load.id
+        status = current_load.status
+        
+        # Resolve names for current load
+        origin_name = "Origen Desconocido"
+        if current_load.origin_facility_id:
+            fac = treatment_plant_service.get_by_id(current_load.origin_facility_id)
+            origin_name = fac.name if fac else str(current_load.origin_facility_id)
+            
+        dest_name = "Destino Desconocido"
+        if current_load.destination_site_id:
+            site = location_service.site_repo.get_by_id(current_load.destination_site_id)
+            dest_name = site.name if site else str(current_load.destination_site_id)
+    else:
+        st.error("No se pudo cargar la información del viaje activo.")
+        return
     
     # --- 3. Flujo de Estados ---
     

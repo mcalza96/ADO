@@ -12,9 +12,8 @@ class ContractorService:
     Implements business logic and validation for transport contractors.
     """
     
-    def __init__(self, db_manager: DatabaseManager):
-        self.db_manager = db_manager
-        self.repository = ContractorRepository(db_manager)
+    def __init__(self, contractor_repository: ContractorRepository):
+        self.repository = contractor_repository
 
     def get_all_contractors(self, active_only: bool = True) -> List[Contractor]:
         """

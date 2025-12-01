@@ -1,14 +1,15 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
-from services.reporting.reporting_service import ReportingService
+from container import get_container
 
 def client_portal_page():
     st.header("Portal de Cliente")
     st.markdown("Bienvenido. Aquí puede revisar la trazabilidad completa de sus residuos.")
 
     # Initialize Service
-    service = ReportingService()
+    services = get_container()
+    service = services.reporting_service
 
     # Filters
     col1, col2 = st.columns(2)

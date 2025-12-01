@@ -13,7 +13,7 @@ def disposal_page(treatment_plant_service=None):
     services = get_container()
     disposal_service = services.disposal_service
     location_service = services.location_service
-    transport_service = services.transport_service
+    driver_service = services.driver_service
     treatment_plant_service = treatment_plant_service or services.treatment_plant_service
 
     # --- Context Selector (Simulation) ---
@@ -58,7 +58,7 @@ def disposal_page(treatment_plant_service=None):
         else:
             origin = "Desconocido"
             
-        driver = transport_service.get_driver_by_id(load.driver_id)
+        driver = driver_service.get_driver_by_id(load.driver_id)
         driver_name = driver.name if driver else "N/A"
         
         table_data.append({

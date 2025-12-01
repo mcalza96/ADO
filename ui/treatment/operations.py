@@ -15,7 +15,7 @@ def treatment_operations_page():
     batch_service = services.batch_service
     
     # 1. Context Selection (Plant)
-    plants = plant_service.get_all_plants()
+    plants = plant_service.get_all()
     if not plants:
         st.warning("No hay plantas de tratamiento configuradas.")
         return

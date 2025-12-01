@@ -1,12 +1,13 @@
 import streamlit as st
 import pandas as pd
-from services.reporting.reporting_service import ReportingService
+from container import get_container
 
 def logistics_dashboard_page():
     st.header("🚛 Torre de Control Logística")
     st.markdown("**Monitoreo en Tiempo Real** - Datos reales del sistema")
     
-    service = ReportingService()
+    services = get_container()
+    service = services.reporting_service
     df = service.get_fleet_monitoring()
     
     # === METRICS SECTION ===

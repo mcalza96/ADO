@@ -36,23 +36,24 @@ class TreatmentPlantRepository(BaseRepository[TreatmentPlant]):
         """Alias for get_by_client to match service expectations."""
         return self.get_by_client(client_id)
     
-    def get_all(self) -> List[TreatmentPlant]:
+    def get_all(self, active_only: bool = True, order_by: str = "name") -> List[TreatmentPlant]:
         """
-        Get all active treatment plants.
+        Get all treatment plants.
         """
         with self.db_manager as conn:
             cursor = conn.cursor()
-            # Explicitly selecting columns to ensure client_id is included
-            query = """
-            SELECT id, client_id, name, address, latitude, longitude, 
-                   authorization_resolution, allowed_vehicle_types, is_active 
-            FROM facilities 
-            WHERE is_active = 1
-            ORDER BY name
-            """
-            cursor.execute(query)
+            
+            query = f"SELECT * FROM {self.table_name}"
+            params = []
+            
+            if active_only:
+                query += " WHERE is_active = 1"
+                
+            query += f" ORDER BY {order_by}"
+            
+            cursor.execute(query, params)
             rows = cursor.fetchall()
-            return [TreatmentPlant(**dict(row)) for row in rows]
+            return [self._map_row_to_model(dict(row)) for row in rows]
     
     def update_allowed_vehicle_types(self, facility_id: int, allowed_types: str) -> bool:
         """

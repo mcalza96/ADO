@@ -9,7 +9,7 @@ def requests_page(treatment_plant_service=None):
     services = get_container()
     client_service = services.client_service
     location_service = services.location_service
-    ops_service = services.operations_service
+    ops_service = services.logistics_service
     treatment_plant_service = treatment_plant_service or services.treatment_plant_service
     
     # 1. Select Client (Simulating User Context)
@@ -23,7 +23,7 @@ def requests_page(treatment_plant_service=None):
     client_id = c_opts[sel_client]
     
     # 2. Select Facility
-    facilities = treatment_plant_service.get_facilities_by_client(client_id)
+    facilities = treatment_plant_service.get_by_client(client_id)
     if not facilities:
         st.warning("Este cliente no tiene plantas registradas.")
         return
@@ -63,8 +63,8 @@ def requests_page(treatment_plant_service=None):
                 "ID": l.id,
                 "Fecha Programada": l.scheduled_date,
                 "Estado": l.status,
-                "Transportista": l.transport_company_id if l.transport_company_id else "Pendiente",
-                "Destino": "Asignado" if (l.destination_facility_id or l.destination_treatment_plant_id) else "Pendiente"
+                "Transportista": l.contractor_id if l.contractor_id else "Pendiente",
+                "Destino": "Asignado" if (l.destination_site_id or l.destination_treatment_plant_id) else "Pendiente"
             })
         
         st.dataframe(data, use_container_width=True)

@@ -5,10 +5,9 @@ from repositories.contractor_repository import ContractorRepository
 from models.masters.driver import Driver
 
 class DriverService:
-    def __init__(self, db_manager: DatabaseManager):
-        self.db_manager = db_manager
-        self.repository = DriverRepository(db_manager)
-        self.contractor_repository = ContractorRepository(db_manager)
+    def __init__(self, driver_repository: DriverRepository, contractor_repository: ContractorRepository):
+        self.repository = driver_repository
+        self.contractor_repository = contractor_repository
 
     def save(self, driver: Driver) -> Driver:
         """
@@ -48,6 +47,18 @@ class DriverService:
         Soft delete a driver.
         """
         return self.repository.delete(driver_id)
+
+    def get_drivers_by_contractor(self, contractor_id: int) -> List[Driver]:
+        """
+        Get all active drivers for a specific contractor.
+        """
+        return self.repository.get_by_contractor(contractor_id)
+
+    def get_driver_by_id(self, driver_id: int) -> Optional[Driver]:
+        """
+        Get a driver by ID.
+        """
+        return self.repository.get_by_id(driver_id)
 
     def get_all_drivers(self, active_only: bool = True) -> List[Driver]:
         """

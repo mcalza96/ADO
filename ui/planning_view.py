@@ -9,7 +9,6 @@ from repositories.site_repository import SiteRepository
 from repositories.load_repository import LoadRepository
 from repositories.batch_repository import BatchRepository
 from repositories.nitrogen_application_repository import NitrogenApplicationRepository
-from services.masters.transport_service import TransportService
 from services.masters.location_service import LocationService
 from services.masters.treatment_plant_service import TreatmentPlantService
 
@@ -20,7 +19,9 @@ def planning_page(treatment_plant_service=None):
     services = get_container()
     
     logistics_service = services.logistics_service
-    transport_service = services.transport_service
+    contractor_service = services.contractor_service
+    driver_service = services.driver_service
+    vehicle_service = services.vehicle_service
     location_service = services.location_service
     # Use passed service or get from container
     treatment_plant_service = treatment_plant_service or services.treatment_plant_service
@@ -95,7 +96,7 @@ def planning_page(treatment_plant_service=None):
                     st.subheader("Recursos")
                     
                     # 1. Contractor & Driver
-                    contractors = transport_service.get_all_contractors()
+                    contractors = contractor_service.get_all_contractors()
                     c_opts = {c.name: c.id for c in contractors}
                     sel_c = st.selectbox("Transportista", list(c_opts.keys()))
                     
@@ -104,12 +105,12 @@ def planning_page(treatment_plant_service=None):
                     
                     if sel_c:
                         c_id = c_opts[sel_c]
-                        drivers = transport_service.get_drivers_by_contractor(c_id)
+                        drivers = driver_service.get_drivers_by_contractor(c_id)
                         d_opts = {d.name: d.id for d in drivers}
                         sel_d = st.selectbox("Conductor", list(d_opts.keys()))
                         if sel_d: driver_id = d_opts[sel_d]
                         
-                        vehicles = transport_service.get_vehicles_by_contractor(c_id)
+                        vehicles = vehicle_service.get_vehicles_by_contractor(c_id)
                         v_opts = {f"{v.license_plate} ({v.type})": v.id for v in vehicles}
                         sel_v = st.selectbox("Vehículo", list(v_opts.keys()))
                         if sel_v: vehicle_id = v_opts[sel_v]
@@ -133,7 +134,7 @@ def planning_page(treatment_plant_service=None):
                         sel_s = st.selectbox("Predio Destino", list(s_opts.keys()))
                         if sel_s: site_id = s_opts[sel_s]
                     else:
-                        plants = treatment_plant_service.get_all_plants()
+                        plants = treatment_plant_service.get_all()
                         p_opts = {p.name: p.id for p in plants}
                         sel_p = st.selectbox("Planta Destino", list(p_opts.keys()))
                         if sel_p: plant_id = p_opts[sel_p]
@@ -201,8 +202,8 @@ def planning_page(treatment_plant_service=None):
                     origin = plant.name if plant else str(load.origin_treatment_plant_id)
                 
                 # Resolve Driver/Vehicle
-                driver = transport_service.get_driver_by_id(load.driver_id)
-                vehicle = transport_service.get_vehicle_by_id(load.vehicle_id)
+                driver = driver_service.get_driver_by_id(load.driver_id)
+                vehicle = vehicle_service.get_vehicle_by_id(load.vehicle_id)
                 
                 s_data.append({
                     "ID": load.id,

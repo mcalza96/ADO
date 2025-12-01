@@ -12,7 +12,7 @@ def ds4_monitoring_view(plant_id: int, services=None):
     
     container_service = services.container_service
     treatment_batch_service = services.treatment_batch_service
-    ops_service = services.operations_service
+    ops_service = services.logistics_service
     
     tab1, tab2, tab3 = st.tabs(["1. Llenado (Inicio)", "2. Monitoreo (pH)", "3. Despacho (Salida)"])
     

@@ -49,7 +49,7 @@ def treatment_page(treatment_plant_service=None):
                 except Exception as e:
                     st.error(f"Error: {e}")
 
-    facilities = treatment_plant_service.get_facilities_by_client(selected_client_id)
+    facilities = treatment_plant_service.get_by_client(selected_client_id)
     
     if not facilities:
         st.info("No hay plantas registradas para este cliente.")

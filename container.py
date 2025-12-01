@@ -20,9 +20,14 @@ from repositories.site_event_repository import SiteEventRepository
 from repositories.user_repository import UserRepository
 from repositories.batch_repository import BatchRepository
 from repositories.nitrogen_application_repository import NitrogenApplicationRepository
+from repositories.client_repository import ClientRepository
+from repositories.contractor_repository import ContractorRepository
+from repositories.driver_repository import DriverRepository
+from repositories.vehicle_repository import VehicleRepository
+from repositories.reporting_repository import ReportingRepository
+
 from services.masters.location_service import LocationService
-from services.operations.disposal_execution import DisposalExecutionService
-from services.masters.transport_service import TransportService
+from services.operations.disposal_execution_service import DisposalExecutionService
 from services.operations.dispatch_service import DispatchService
 from services.auth_service import AuthService
 
@@ -31,10 +36,8 @@ from services.operations.site_preparation_service import SitePreparationService
 from services.operations.manifest_service import ManifestService
 from services.operations.batch_service import BatchService
 from services.compliance.compliance_service import ComplianceService
-from services.operations.dispatch_validation_service import DispatchValidationService
 from services.operations.nitrogen_application_service import NitrogenApplicationService
 from services.operations.reception_service import ReceptionService
-from repositories.vehicle_repository import VehicleRepository
 from services.operations.logistics_service import LogisticsService
 from services.operations.treatment_reception import TreatmentReceptionService
 from services.operations.treatment_batch_service import TreatmentBatchService
@@ -43,8 +46,10 @@ from services.masters.treatment_plant_service import TreatmentPlantService
 from services.masters.container_service import ContainerService
 from services.masters.disposal_service import DisposalService as MasterDisposalService
 from services.masters.treatment_service import TreatmentService
-from services.operations_service import OperationsService
 from services.masters.contractor_service import ContractorService
+from services.masters.driver_service import DriverService
+from services.masters.vehicle_service import VehicleService
+from services.reporting.reporting_service import ReportingService
 from services.operations.dashboard_service import DashboardService
 
 @st.cache_resource
@@ -61,7 +66,6 @@ def get_container() -> SimpleNamespace:
             - db_manager: DatabaseManager instance
             - location_service: LocationService instance
             - disposal_service: DisposalExecutionService instance
-            - transport_service: TransportService instance
             - facility_service: FacilityService instance
             
     Example:
@@ -81,6 +85,10 @@ def get_container() -> SimpleNamespace:
     batch_repo = BatchRepository(db_manager)
     application_repo = NitrogenApplicationRepository(db_manager)
     vehicle_repo = VehicleRepository(db_manager)
+    client_repo = ClientRepository(db_manager)
+    contractor_repo = ContractorRepository(db_manager)
+    driver_repo = DriverRepository(db_manager)
+    reporting_repo = ReportingRepository(db_manager)
     
     # Initialize Services with dependency injection
     location_service = LocationService(site_repo, plot_repo)
@@ -92,9 +100,6 @@ def get_container() -> SimpleNamespace:
     )
     
     # Validation and Nitrogen Services
-    dispatch_validation_service = DispatchValidationService(
-        vehicle_repo, batch_service, compliance_service
-    )
     nitrogen_app_service = NitrogenApplicationService(
         application_repo, compliance_service
     )
@@ -105,13 +110,12 @@ def get_container() -> SimpleNamespace:
     
     disposal_service = DisposalExecutionService(db_manager)
     auth_service = AuthService(user_repo)
-    transport_service = TransportService(db_manager)
     
     # DispatchService with all dependencies injected
     dispatch_service = DispatchService(
         db_manager,
         batch_service,
-        dispatch_validation_service,
+        compliance_service,
         nitrogen_app_service,
         manifest_service
     )
@@ -129,15 +133,17 @@ def get_container() -> SimpleNamespace:
     treatment_batch_service = TreatmentBatchService(db_manager)
     
     # Master Services
-    client_service = ClientService(db_manager)
-    contractor_service = ContractorService(db_manager)
+    client_service = ClientService(client_repo)
+    contractor_service = ContractorService(contractor_repo)
+    driver_service = DriverService(driver_repo, contractor_repo)
+    vehicle_service = VehicleService(vehicle_repo)
     treatment_plant_service = TreatmentPlantService(db_manager)
     container_service = ContainerService(db_manager)
     master_disposal_service = MasterDisposalService(db_manager)
     treatment_service = TreatmentService(db_manager)
     
-    # Operations Facade (agregates multiple operation services)
-    operations_service = OperationsService(db_manager, dispatch_service=dispatch_service)
+    # Reporting Service
+    reporting_service = ReportingService(reporting_repo)
     
     # Dashboard Service
     dashboard_service = DashboardService(db_manager)
@@ -148,7 +154,6 @@ def get_container() -> SimpleNamespace:
         location_service=location_service,
         disposal_service=disposal_service,
         auth_service=auth_service,
-        transport_service=transport_service,
         dispatch_service=dispatch_service,
         site_prep_service=site_prep_service,
         manifest_service=manifest_service,
@@ -159,13 +164,14 @@ def get_container() -> SimpleNamespace:
         treatment_reception_service=treatment_reception_service,
         client_service=client_service,
         contractor_service=contractor_service,
+        driver_service=driver_service,
+        vehicle_service=vehicle_service,
         treatment_plant_service=treatment_plant_service,
         container_service=container_service,
         master_disposal_service=master_disposal_service,
         treatment_service=treatment_service,
-        operations_service=operations_service,
         dashboard_service=dashboard_service,
         compliance_service=compliance_service,
-        dispatch_validation_service=dispatch_validation_service,
-        nitrogen_app_service=nitrogen_app_service
+        nitrogen_app_service=nitrogen_app_service,
+        reporting_service=reporting_service
     )

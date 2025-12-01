@@ -4,9 +4,8 @@ from repositories.vehicle_repository import VehicleRepository
 from models.masters.vehicle import Vehicle
 
 class VehicleService:
-    def __init__(self, db_manager: DatabaseManager):
-        self.db_manager = db_manager
-        self.repository = VehicleRepository(db_manager)
+    def __init__(self, vehicle_repository: VehicleRepository):
+        self.repository = vehicle_repository
 
     def save(self, vehicle: Vehicle) -> Vehicle:
         """
@@ -48,6 +47,19 @@ class VehicleService:
         """
         Get all vehicles.
         """
+        return self.repository.get_all(active_only=active_only)
+
+    def get_vehicles_by_contractor(self, contractor_id: int) -> List[Vehicle]:
+        """
+        Get all active vehicles for a specific contractor.
+        """
+        return self.repository.get_by_contractor(contractor_id)
+
+    def get_vehicle_by_id(self, vehicle_id: int) -> Optional[Vehicle]:
+        """
+        Get a vehicle by ID.
+        """
+        return self.repository.get_by_id(vehicle_id)
         if active_only:
             return self.repository.get_all_active()
         else:

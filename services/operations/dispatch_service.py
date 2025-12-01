@@ -154,10 +154,6 @@ class DispatchService:
                 "manifest_code": created_load.manifest_code,
                 "manifest_path": manifest_path
             }
-        try:
-            self.batch_service.reserve_tonnage(batch_id, weight_net)
-        except ValueError as e:
-            # Rollback: delete the created load
             self.load_repo.delete(created_load.id)
             raise ValueError(f"Error al reservar stock: {str(e)}")
             

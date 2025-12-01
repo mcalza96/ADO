@@ -19,6 +19,19 @@ class LogisticsService:
         self.load_repo = LoadRepository(db_manager)
         self.compliance_service = compliance_service
 
+    def get_loads_by_facility(self, facility_id: int) -> list[Load]:
+        """
+        Get all loads for a specific facility.
+        """
+        # Assuming LoadRepository has a method to filter by facility_id
+        # If not, we might need to add it or use a generic filter
+        # For now, let's assume we can filter by origin_facility_id
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM loads WHERE origin_facility_id = ? ORDER BY created_at DESC", (facility_id,))
+            rows = cursor.fetchall()
+            return [self.load_repo._map_row_to_model(dict(row)) for row in rows]
+
     def create_request(self, facility_id: Optional[int], requested_date: datetime, plant_id: Optional[int] = None) -> Load:
         """
         Creates a new Load Request.
@@ -107,3 +120,10 @@ class LogisticsService:
         load.updated_at = datetime.now()
         
         return self.load_repo.update(load)
+
+    def get_loads_by_status(self, status: str) -> list[Load]:
+        """
+        Returns loads filtered by status.
+        """
+        return self.load_repo.get_by_status(status)
+
