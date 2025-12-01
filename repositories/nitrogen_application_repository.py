@@ -4,7 +4,7 @@ from database.repository import BaseRepository
 from database.db_manager import DatabaseManager
 from models.agronomy.application import NitrogenApplication
 
-class ApplicationRepository(BaseRepository[NitrogenApplication]):
+class NitrogenApplicationRepository(BaseRepository[NitrogenApplication]):
     """
     Repository for tracking nitrogen applications to sites.
     Manages the 'nitrogen_applications' table.

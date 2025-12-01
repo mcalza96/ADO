@@ -2,7 +2,7 @@
 import streamlit as st
 from container import get_container
 from models.masters.client import Client
-from models.masters.location import Facility
+from models.masters.treatment_plant import TreatmentPlant
 
 
 def clients_page(treatment_plant_service=None):
@@ -98,16 +98,14 @@ def clients_page(treatment_plant_service=None):
                 if fac_submitted:
                     if fac_name:
                         try:
-                            new_facility = Facility(
-                                id=None,
-                                client_id=selected_client_id,
+                            treatment_plant_service.create_plant(
                                 name=fac_name,
                                 address=fac_address,
+                                client_id=selected_client_id,
                                 latitude=fac_lat,
                                 longitude=fac_lon,
                                 allowed_vehicle_types=",".join(allowed_types) if allowed_types else None
                             )
-                            location_service.create_facility(new_facility)
                             st.success("✅ Planta creada exitosamente")
                             st.rerun()
                         except Exception as e:

@@ -16,6 +16,7 @@ class Load:
     # Optional/Nullable fields
     container_id: Optional[int] = None
     batch_id: Optional[int] = None # Legacy/Compatibility
+    treatment_batch_id: Optional[int] = None # Link to operational batch
     
     # Operational Data
     material_class: Optional[str] = None

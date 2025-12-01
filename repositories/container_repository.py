@@ -48,12 +48,6 @@ class ContainerRepository(BaseRepository[Container]):
         """
         Get a container by its unique code.
         Useful for validating duplicate codes.
-        
-        Args:
-            code: Container code (e.g., "TOLVA-204")
-            
-        Returns:
-            Container if found, None otherwise
         """
         with self.db_manager as conn:
             cursor = conn.cursor()
@@ -65,10 +59,10 @@ class ContainerRepository(BaseRepository[Container]):
             if row:
                 return self._map_row_to_model(dict(row))
             return None
-    
+
     def get_all_active(self) -> List[Container]:
         """
-        Get all active containers across all contractors with contractor name.
+        Get all active containers with contractor name.
         """
         with self.db_manager as conn:
             cursor = conn.cursor()
@@ -77,9 +71,10 @@ class ContainerRepository(BaseRepository[Container]):
                 SELECT c.*, ctr.name as contractor_name 
                 FROM {self.table_name} c
                 JOIN contractors ctr ON c.contractor_id = ctr.id
-                WHERE c.is_active = 1 
+                WHERE c.is_active = 1
                 ORDER BY c.code
                 """
             )
             rows = cursor.fetchall()
             return [self._map_row_to_model(dict(row)) for row in rows]
+

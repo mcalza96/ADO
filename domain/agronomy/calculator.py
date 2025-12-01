@@ -40,13 +40,31 @@ class AgronomyCalculator:
     @staticmethod
     def calculate_max_application_rate(pan: float, crop_requirement: float) -> float:
         """
-        Calculates the maximum application rate in Dry Tons per Acre/Hectare.
-        Rate = Crop Requirement / PAN
+        Calculates the maximum application rate in Dry Tons per Hectare.
+        
+        Args:
+            pan: Plant Available Nitrogen in lbs/dry_ton (EPA Standard)
+            crop_requirement: Nitrogen requirement in kg/ha (Chile Standard)
+            
+        Returns:
+            Max Application Rate in Dry Tons/Ha
         """
         if pan <= 0:
             raise AgronomicException("Calculated PAN is zero or negative. Cannot determine application rate.")
         
-        return crop_requirement / pan
+        # 1. Convert Crop Requirement from kg/ha to lbs/acre
+        # 1 kg/ha = 0.892179 lbs/acre
+        req_lbs_acre = crop_requirement * 0.892179
+        
+        # 2. Calculate Rate in Tons/Acre (EPA Formula)
+        # Rate = Requirement / PAN
+        rate_tons_acre = req_lbs_acre / pan
+        
+        # 3. Convert Rate from Tons/Acre to Tons/Ha
+        # 1 Ton/Acre = 2.47105 Tons/Ha
+        rate_tons_ha = rate_tons_acre * 2.47105
+        
+        return rate_tons_ha
 
     @staticmethod
     def convert_to_wet_tons(dry_tons: float, percent_solids: float) -> float:

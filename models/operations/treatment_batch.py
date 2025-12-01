@@ -5,7 +5,7 @@ from typing import Optional
 @dataclass
 class TreatmentBatch:
     id: Optional[int]
-    plant_id: int
+    facility_id: int  # Renamed from plant_id
     container_id: int
     fill_time: datetime
     ph_0h: float
@@ -13,4 +13,5 @@ class TreatmentBatch:
     ph_2h: Optional[float] = None
     ph_24h: Optional[float] = None
     status: str = 'MONITORING' # MONITORING, READY, DISPATCHED
+    is_active: bool = True
     created_at: Optional[datetime] = None

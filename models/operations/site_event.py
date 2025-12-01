@@ -10,4 +10,5 @@ class SiteEvent:
     event_date: datetime
     description: Optional[str] = None
     created_by_user_id: Optional[int] = None
+    is_active: bool = True
     created_at: Optional[datetime] = None

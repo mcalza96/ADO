@@ -20,46 +20,89 @@ class DatabaseManager:
         """
         self.db_path = db_path
         self.connection: Optional[sqlite3.Connection] = None
+        self._transaction_depth = 0
 
     def __enter__(self) -> sqlite3.Connection:
         """
         Enter the runtime context related to this object.
         Establishes the connection and configures pragmas.
+        Supports nested transactions via reference counting.
         """
         # Ensure the directory exists
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         
-        self.connection = sqlite3.connect(self.db_path)
+        if self.connection is None:
+            self.connection = sqlite3.connect(self.db_path)
+            self.connection.row_factory = sqlite3.Row
+            
+            # Configure SQLite for integrity and concurrency
+            self.connection.execute("PRAGMA foreign_keys = ON;")
+            self.connection.execute("PRAGMA journal_mode = WAL;")
         
-        # Configure SQLite for integrity and concurrency
-        self.connection.execute("PRAGMA foreign_keys = ON;")
-        self.connection.execute("PRAGMA journal_mode = WAL;")
-        
-        # Return the connection to be used in the 'with' block
-        # We could also return self and expose execute methods, but returning connection is flexible
-        # However, to strictly follow "DatabaseManager" pattern often implies wrapping methods.
-        # But the prompt asks for "Context Manager (with DatabaseManager() as db:)"
-        # If 'db' is the connection, then the user uses raw cursor.
-        # If 'db' is the manager, I should provide helper methods.
-        # I will return the connection for maximum flexibility as it's a standard pythonic pattern for simple wrappers,
-        # OR I can return 'self' and set self.connection.
-        # Let's return the connection object but customized with Row factory.
-        
-        self.connection.row_factory = sqlite3.Row
+        self._transaction_depth += 1
         return self.connection
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """
         Exit the runtime context.
-        Commits if no error, rolls back if error, and closes connection.
+        Commits if no error, rolls back if error.
+        Only closes if it was the top-level context.
         """
+        self._transaction_depth -= 1
+        
         if self.connection:
             if exc_type:
+                # If an error occurred, we rollback. 
+                # In a nested context, this rollback might affect the whole transaction 
+                # depending on how SQLite handles it, but typically we want to bubble up the error.
                 self.connection.rollback()
                 print(f"Transaction rolled back due to: {exc_val}")
-            else:
-                self.connection.commit()
             
+            if self._transaction_depth == 0:
+                if not exc_type:
+                    self.connection.commit()
+                
+                self.connection.close()
+                self.connection = None
+
+    def get_connection(self) -> sqlite3.Connection:
+        """
+        Returns a raw connection object. 
+        Useful for manual transaction management.
+        """
+        if self.connection is None:
+            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+            self.connection = sqlite3.connect(self.db_path)
+            self.connection.row_factory = sqlite3.Row
+            self.connection.execute("PRAGMA foreign_keys = ON;")
+            self.connection.execute("PRAGMA journal_mode = WAL;")
+        return self.connection
+
+    def begin_transaction(self) -> sqlite3.Connection:
+        """
+        Starts a transaction explicitly.
+        """
+        return self.get_connection()
+
+    def commit(self):
+        """
+        Commits the current transaction.
+        """
+        if self.connection:
+            self.connection.commit()
+
+    def rollback(self):
+        """
+        Rolls back the current transaction.
+        """
+        if self.connection:
+            self.connection.rollback()
+            
+    def close(self):
+        """
+        Closes the connection explicitly.
+        """
+        if self.connection:
             self.connection.close()
             self.connection = None
 

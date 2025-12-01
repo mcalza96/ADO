@@ -10,8 +10,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from database.db_manager import DatabaseManager
 from services.operations.batch_service import BatchService
 from repositories.site_repository import SiteRepository
-from repositories.facility_repository import FacilityRepository
-from models.masters.location import Site, Plot, Facility
+from repositories.treatment_plant_repository import TreatmentPlantRepository
+from models.masters.location import Site, Plot
+from models.masters.treatment_plant import TreatmentPlant
 
 def seed_data():
     print("🌱 Sembrando datos de Compliance...")
@@ -19,12 +20,12 @@ def seed_data():
     
     batch_service = BatchService(db)
     site_repo = SiteRepository(db)
-    facility_repo = FacilityRepository(db)
+    facility_repo = TreatmentPlantRepository(db)
     
     # 1. Create Facility if needed
     facilities = facility_repo.get_all()
     if not facilities:
-        facility = Facility(id=None, client_id=1, name="Planta Principal", address="Camino Real 100")
+        facility = TreatmentPlant(id=None, client_id=1, name="Planta Principal", address="Camino Real 100")
         facility = facility_repo.add(facility)
         facility_id = facility.id
     else:

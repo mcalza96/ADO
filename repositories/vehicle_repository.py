@@ -53,10 +53,10 @@ class VehicleRepository(BaseRepository[Vehicle]):
             if row:
                 return self._map_row_to_model(dict(row))
             return None
-    
+
     def get_all_active(self) -> List[Vehicle]:
         """
-        Get all active vehicles across all contractors with contractor name.
+        Get all active vehicles with contractor name.
         """
         with self.db_manager as conn:
             cursor = conn.cursor()
@@ -65,9 +65,10 @@ class VehicleRepository(BaseRepository[Vehicle]):
                 SELECT v.*, c.name as contractor_name 
                 FROM {self.table_name} v
                 JOIN contractors c ON v.contractor_id = c.id
-                WHERE v.is_active = 1 
+                WHERE v.is_active = 1
                 ORDER BY v.license_plate
                 """
             )
             rows = cursor.fetchall()
             return [self._map_row_to_model(dict(row)) for row in rows]
+

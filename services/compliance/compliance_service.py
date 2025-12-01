@@ -4,7 +4,7 @@ from datetime import date
 from repositories.site_repository import SiteRepository
 from repositories.load_repository import LoadRepository
 from repositories.batch_repository import BatchRepository
-from repositories.application_repository import ApplicationRepository
+from repositories.nitrogen_application_repository import NitrogenApplicationRepository
 from domain.agronomy.calculator import AgronomyCalculator
 from domain.dtos import NutrientAnalysisDTO, ApplicationScenarioDTO, MetalAnalysisDTO
 from domain.exceptions import AgronomicException, ComplianceException, ComplianceViolationError
@@ -17,7 +17,7 @@ class ComplianceService:
     """
 
     def __init__(self, site_repo: SiteRepository, load_repo: LoadRepository, 
-                 batch_repo: BatchRepository, application_repo: ApplicationRepository):
+                 batch_repo: BatchRepository, application_repo: NitrogenApplicationRepository):
         self.site_repo = site_repo
         self.load_repo = load_repo
         self.batch_repo = batch_repo

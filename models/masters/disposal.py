@@ -15,6 +15,7 @@ class SoilSample:
     ph_level: Optional[float] = None
     heavy_metals_limit_json: Optional[str] = None
     valid_until: Optional[date] = None
+    is_active: bool = True
     created_at: Optional[datetime] = None
 
 
@@ -27,3 +28,4 @@ class Application:
     nitrogen_load_applied: Optional[float] = None
     batch_source_ids: Optional[str] = None
     notes: Optional[str] = None
+    is_active: bool = True

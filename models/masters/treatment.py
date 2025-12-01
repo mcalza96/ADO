@@ -8,6 +8,7 @@ class Batch:
     facility_id: int
     batch_code: str
     production_date: date
+    treatment_batch_id: Optional[int] = None  # Link to physical TreatmentBatch
     initial_tonnage: Optional[float] = None
     current_tonnage: Optional[float] = None  # Available stock for dispatch
     sludge_type: Optional[str] = None

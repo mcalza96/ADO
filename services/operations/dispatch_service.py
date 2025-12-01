@@ -3,9 +3,13 @@ from datetime import datetime
 from database.db_manager import DatabaseManager
 from repositories.load_repository import LoadRepository
 from repositories.vehicle_repository import VehicleRepository
+from repositories.container_repository import ContainerRepository
 from services.operations.batch_service import BatchService
+from services.operations.treatment_batch_service import TreatmentBatchService
+from services.compliance.compliance_service import ComplianceService
 from models.operations.load import Load
-from domain.exceptions import TransitionException
+from domain.exceptions import TransitionException, ComplianceViolationError
+from domain.constants import SLUDGE_DENSITY
 
 class DispatchService:
     """
@@ -20,7 +24,7 @@ class DispatchService:
         self,
         db_manager: DatabaseManager,
         batch_service: BatchService,
-        validation_service: 'DispatchValidationService',
+        compliance_service: ComplianceService,
         nitrogen_service: 'NitrogenApplicationService',
         manifest_service: 'ManifestService'
     ):
@@ -28,10 +32,65 @@ class DispatchService:
         self.db_manager = db_manager
         self.load_repo = LoadRepository(db_manager)
         self.vehicle_repo = VehicleRepository(db_manager)
+        self.container_repo = ContainerRepository(db_manager)
+        self.treatment_batch_service = TreatmentBatchService(db_manager)
         self.batch_service = batch_service
-        self.validation_service = validation_service
+        self.compliance_service = compliance_service
         self.nitrogen_service = nitrogen_service
         self.manifest_service = manifest_service
+
+    def _validate_capacity(self, vehicle_id: int, container_id: Optional[int]) -> None:
+        """
+        Validates that the vehicle can carry the estimated weight of the container.
+        Estimated Weight = Container Volume * Sludge Density
+        """
+        if not container_id:
+            return 
+        
+        vehicle = self.vehicle_repo.get_by_id(vehicle_id)
+        container = self.container_repo.get_by_id(container_id)
+        
+        if not vehicle or not container:
+            return 
+            
+        estimated_weight = container.capacity_m3 * SLUDGE_DENSITY
+        if estimated_weight > vehicle.capacity_wet_tons:
+             raise ValueError(f"Capacity Risk: Container {container.code} ({container.capacity_m3}m3) estimated weight ({estimated_weight:.2f}t) exceeds Vehicle {vehicle.license_plate} capacity ({vehicle.capacity_wet_tons}t).")
+
+    def _validate_dispatch_rules(
+        self,
+        batch_id: int,
+        vehicle_id: int,
+        destination_site_id: int,
+        weight_net: float
+    ) -> None:
+        """
+        Validates a dispatch operation against all business rules.
+        Consolidated from DispatchValidationService.
+        """
+        # Validation 1: Check batch stock
+        available = self.batch_service.get_batch_balance(batch_id)
+        if weight_net > available:
+            raise ValueError(
+                f"Stock insuficiente. Disponible: {available} kg, Solicitado: {weight_net} kg"
+            )
+        
+        # Validation 2: Check vehicle capacity
+        vehicle = self.vehicle_repo.get_by_id(vehicle_id)
+        if not vehicle:
+            raise ValueError(f"Vehículo con ID {vehicle_id} no encontrado")
+        
+        if weight_net > vehicle.max_capacity:
+            raise ValueError(
+                f"Peso excede capacidad del vehículo. Capacidad: {vehicle.max_capacity} kg, Peso: {weight_net} kg"
+            )
+        
+        # Validation 3: Compliance Check (Hard Constraints)
+        try:
+            self.compliance_service.validate_dispatch(batch_id, destination_site_id, weight_net)
+        except ComplianceViolationError as e:
+            # Re-raise with a clear prefix for UI handling
+            raise ValueError(f"🚫 OPERACIÓN BLOQUEADA: {str(e)}")
 
     def dispatch_truck(
         self,
@@ -41,35 +100,60 @@ class DispatchService:
         destination_site_id: int,
         origin_facility_id: int,
         weight_net: float,
-        guide_number: Optional[str] = None
+        guide_number: Optional[str] = None,
+        container_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Dispatches a truck for the Sprint 2 operational flow.
         Creates load, reserves batch stock, and generates PDF manifest.
         Now includes Compliance Validation (Sprint 3).
+        Executes in a single transaction to ensure integrity.
         """
-        # Validate dispatch using dedicated service
-        self.validation_service.validate_dispatch(batch_id, vehicle_id, destination_site_id, weight_net)
+        # Validate Capacity (Sprint 4 Fix)
+        self._validate_capacity(vehicle_id, container_id)
+
+        # Validate dispatch rules
+        self._validate_dispatch_rules(batch_id, vehicle_id, destination_site_id, weight_net)
         
-        # Create load
-        load = Load(
-            id=None,
-            origin_facility_id=origin_facility_id,
-            destination_site_id=destination_site_id,
-            batch_id=batch_id,
-            driver_id=driver_id,
-            vehicle_id=vehicle_id,
-            weight_net=weight_net,
-            guide_number=guide_number,
-            status='InTransit',
-            dispatch_time=datetime.now(),
-            created_at=datetime.now()
-        )
-        
-        # Save load to database
-        created_load = self.load_repo.create_load(load)
-        
-        # Reserve stock from batch
+        # Execute in transaction
+        with self.db_manager as conn:
+            # Create load
+            load = Load(
+                id=None,
+                origin_facility_id=origin_facility_id,
+                destination_site_id=destination_site_id,
+                batch_id=batch_id,
+                driver_id=driver_id,
+                vehicle_id=vehicle_id,
+                container_id=container_id,
+                weight_net=weight_net,
+                guide_number=guide_number,
+                status='InTransit',
+                dispatch_time=datetime.now(),
+                created_at=datetime.now()
+            )
+            
+            # Save load to database
+
+            created_load = self.load_repo.create_load(load)
+            
+            # Reserve stock from batch
+            # This will use the same connection/transaction context
+            self.treatment_batch_service.reserve_stock(batch_id, weight_net)
+            
+            # Generate Manifest (PDF)
+            # Note: If PDF generation fails, we might want to rollback or just log it.
+            # Usually PDF generation is a side effect that shouldn't block the transaction commit if possible,
+            # but if the manifest code is generated here, it's part of the process.
+            # Assuming manifest_service uses the load data.
+            manifest_path = self.manifest_service.generate_manifest(created_load.id)
+            
+            return {
+                "status": "success",
+                "load_id": created_load.id,
+                "manifest_code": created_load.manifest_code,
+                "manifest_path": manifest_path
+            }
         try:
             self.batch_service.reserve_tonnage(batch_id, weight_net)
         except ValueError as e:
@@ -112,6 +196,34 @@ class DispatchService:
         if load.status != 'Scheduled':
             raise TransitionException(f"Cannot dispatch load. Current status: {load.status}. Expected: 'Scheduled'.")
             
+        # Validate Capacity
+        self._validate_capacity(load.vehicle_id, container_1_id)
+        
+        # Link Container
+        if container_1_id:
+            load.container_id = container_1_id
+            
+            # Link Treatment Batch (Blind Load Prevention)
+            if not load.batch_id and not load.treatment_batch_id:
+                # Try to find active batch for this container
+                # We assume the container is at the facility of origin (or treatment plant)
+                # Note: origin_facility_id might be a client facility or treatment plant.
+                # If it's a treatment plant, we look for treatment batches.
+                # If origin_treatment_plant_id is set (LogisticsService logic), use that.
+                # Load model has origin_facility_id. LogisticsService maps plant to it?
+                # Let's assume origin_facility_id is the place.
+                active_batches = self.treatment_batch_service.get_active_batches(load.origin_facility_id)
+                # Filter by container
+                matching_batch = next((b for b in active_batches if b.container_id == container_1_id), None)
+                
+                if matching_batch:
+                    load.treatment_batch_id = matching_batch.id
+                else:
+                    raise ValueError(f"Cannot dispatch Blind Load. Container {container_1_id} has no active Treatment Batch and no Batch ID is assigned.")
+        
+        elif not load.batch_id and not load.treatment_batch_id:
+             raise ValueError("Cannot dispatch Blind Load. No Batch ID assigned and no Container provided to link Treatment Batch.")
+
         load.ticket_number = ticket
         load.weight_gross = gross
         load.weight_tare = tare

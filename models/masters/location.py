@@ -3,19 +3,6 @@ from typing import Optional, List
 from datetime import datetime
 
 @dataclass
-class Facility:
-    id: Optional[int]
-    client_id: int
-    name: str
-    address: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    is_active: bool = True
-    allowed_vehicle_types: Optional[str] = None  # CSV: 'BATEA,AMPLIROLL' o None para ambos
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-@dataclass
 class Plot:
     id: Optional[int]
     site_id: int

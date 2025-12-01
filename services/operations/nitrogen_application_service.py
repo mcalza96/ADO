@@ -1,6 +1,6 @@
 from datetime import date
 from database.db_manager import DatabaseManager
-from repositories.application_repository import ApplicationRepository
+from repositories.nitrogen_application_repository import NitrogenApplicationRepository
 from services.compliance.compliance_service import ComplianceService
 from models.agronomy.application import NitrogenApplication
 
@@ -11,7 +11,7 @@ class NitrogenApplicationService:
     """
     def __init__(
         self,
-        application_repo: ApplicationRepository,
+        application_repo: NitrogenApplicationRepository,
         compliance_service: ComplianceService
     ):
         self.application_repo = application_repo

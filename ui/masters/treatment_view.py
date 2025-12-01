@@ -1,6 +1,6 @@
 import streamlit as st
 from container import get_container
-from models.masters.location import Facility
+from models.masters.treatment_plant import TreatmentPlant
 from models.masters.treatment import Batch, LabResult
 import datetime
 
@@ -37,8 +37,13 @@ def treatment_page(treatment_plant_service=None):
             
             if st.form_submit_button("Guardar Planta"):
                 try:
-                    f = Facility(id=None, client_id=selected_client_id, name=f_name, address=f_address, latitude=lat, longitude=lon)
-                    location_service.create_facility(f)
+                    treatment_plant_service.create_plant(
+                        name=f_name,
+                        address=f_address,
+                        client_id=selected_client_id,
+                        latitude=lat,
+                        longitude=lon
+                    )
                     st.success("Planta creada")
                     st.rerun()
                 except Exception as e:

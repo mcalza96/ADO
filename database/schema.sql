@@ -165,7 +165,7 @@ CREATE TABLE IF NOT EXISTS plots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     site_id INTEGER NOT NULL,
     name TEXT NOT NULL, -- e.g., 'Sector 1', 'Lote Norte'
-    area_acres REAL,
+    area_hectares REAL,
     geometry_wkt TEXT, -- Well-Known Text for polygons
     is_active BOOLEAN DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

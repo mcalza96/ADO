@@ -19,7 +19,7 @@ from repositories.load_repository import LoadRepository
 from repositories.site_event_repository import SiteEventRepository
 from repositories.user_repository import UserRepository
 from repositories.batch_repository import BatchRepository
-from repositories.application_repository import ApplicationRepository
+from repositories.nitrogen_application_repository import NitrogenApplicationRepository
 from services.masters.location_service import LocationService
 from services.operations.disposal_execution import DisposalExecutionService
 from services.masters.transport_service import TransportService
@@ -79,7 +79,7 @@ def get_container() -> SimpleNamespace:
     site_event_repo = SiteEventRepository(db_manager)
     user_repo = UserRepository(db_manager)
     batch_repo = BatchRepository(db_manager)
-    application_repo = ApplicationRepository(db_manager)
+    application_repo = NitrogenApplicationRepository(db_manager)
     vehicle_repo = VehicleRepository(db_manager)
     
     # Initialize Services with dependency injection

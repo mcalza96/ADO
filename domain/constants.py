@@ -9,7 +9,10 @@ K_MIN_DEFAULTS = {
 # Conversion factor from mg/kg to lbs/ton
 UNIT_CONVERSION_FACTOR = 0.002
 
-# Crop Nitrogen Requirements (e.g., lbs/acre or kg/ha)
+# Default Sludge Density (tons/m3) for capacity checks
+SLUDGE_DENSITY = 1.2
+
+# Crop Nitrogen Requirements (kg/ha) - Standardized to Metric for Chile
 CROP_REQUIREMENTS = {
     'Corn': 200.0,
     'Wheat': 150.0,

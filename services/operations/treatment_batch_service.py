@@ -11,10 +11,10 @@ class TreatmentBatchService:
         self.repo = BaseRepository(db_manager, TreatmentBatch, "treatment_batches")
         self.container_service = ContainerService(db_manager)
 
-    def create_batch(self, plant_id: int, container_id: int, fill_time: datetime, ph_0h: float, humidity: float) -> TreatmentBatch:
+    def create_batch(self, facility_id: int, container_id: int, fill_time: datetime, ph_0h: float, humidity: float) -> TreatmentBatch:
         batch = TreatmentBatch(
             id=None,
-            plant_id=plant_id,
+            facility_id=facility_id,
             container_id=container_id,
             fill_time=fill_time,
             ph_0h=ph_0h,
@@ -41,13 +41,13 @@ class TreatmentBatchService:
             cursor.execute("UPDATE treatment_batches SET ph_24h = ? WHERE id = ?", (ph, batch_id))
             conn.commit()
 
-    def get_active_batches(self, plant_id: int) -> List[TreatmentBatch]:
+    def get_active_batches(self, facility_id: int) -> List[TreatmentBatch]:
         with self.db_manager as conn:
             cursor = conn.cursor()
             # Now we fetch READY batches too because they are still "active" in terms of monitoring until dispatched
             # But for simplicity, let's just fetch everything that hasn't been dispatched (status != DISPATCHED)
             # Assuming 'READY' means ready for pickup but still in plant.
-            cursor.execute("SELECT * FROM treatment_batches WHERE plant_id = ? AND status = 'READY' ORDER BY fill_time DESC", (plant_id,))
+            cursor.execute("SELECT * FROM treatment_batches WHERE facility_id = ? AND status = 'READY' ORDER BY fill_time DESC", (facility_id,))
             rows = cursor.fetchall()
             return [TreatmentBatch(**dict(row)) for row in rows]
             
