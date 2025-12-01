@@ -1,7 +1,6 @@
 import streamlit as st
 from ui.auth.login import login_page
 from ui.config_view import config_page
-from ui.masters.containers_view import containers_view
 from ui.requests_view import requests_page
 from ui.planning_view import planning_page
 from ui.operations.operations_view import operations_page
@@ -63,7 +62,15 @@ def main():
         
         # Get Services from Container
         services = get_container()
+        
+        # Extract all services needed for different modules
         treatment_plant_service = services.treatment_plant_service
+        client_service = services.client_service
+        contractor_service = services.contractor_service
+        container_service = services.container_service
+        location_service = services.location_service
+        transport_service = services.transport_service
+        auth_service = services.auth_service
         
         # Sidebar Navigation
         with st.sidebar:
@@ -131,11 +138,15 @@ def main():
             treatment_operations_page()
             
         elif module == "Configuración":
-            tab_conf1, tab_conf2 = st.tabs(["General", "Contenedores"])
-            with tab_conf1:
-                config_page(treatment_plant_service=treatment_plant_service)
-            with tab_conf2:
-                containers_view()
+            config_page(
+                client_service=client_service,
+                contractor_service=contractor_service,
+                treatment_plant_service=treatment_plant_service,
+                container_service=container_service,
+                location_service=location_service,
+                transport_service=transport_service,
+                auth_service=auth_service
+            )
 
 if __name__ == "__main__":
     run_migrations()

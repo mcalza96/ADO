@@ -99,6 +99,7 @@ def get_container() -> SimpleNamespace:
         application_repo, compliance_service
     )
     
+    # ManifestService instantiated with updated signature
     manifest_service = ManifestService(db_manager, batch_service, compliance_service)
     site_prep_service = SitePreparationService(db_manager)
     

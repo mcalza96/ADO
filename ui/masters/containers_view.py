@@ -1,31 +1,39 @@
 import streamlit as st
-from container import get_container
 from models.masters.container import Container
 
-def containers_view():
+
+def render(container_service, contractor_service):
+    """
+    Vista de gestión de Contenedores (Tolvas) con inyección de dependencias.
+    
+    Args:
+        container_service: ContainerService instance
+        contractor_service: ContractorService instance (needed for contractor dropdown)
+    """
     st.title("📦 Gestión de Contenedores (Tolvas)")
     
-    services = get_container()
-    container_service = services.container_service
-    contractor_service = services.contractor_service
+    # Initialize session state
+    if 'container_edit_id' not in st.session_state:
+        st.session_state['container_edit_id'] = None
     
-    # Create New Container
+    # Get contractors for dropdown
+    contractors = contractor_service.get_all_contractors(active_only=True)
+    
+    # Create New Container Section
     with st.expander("➕ Nuevo Contenedor", expanded=False):
-        with st.form("new_container"):
-            st.subheader("Datos del Contenedor")
-            
-            code = st.text_input(
-                "Código del Contenedor *", 
-                placeholder="ej. TOLVA-204",
-                help="Código visual pintado en el contenedor"
-            )
-            
-            # Get active contractors
-            contractors = contractor_service.get_all_contractors(active_only=True)
-            if not contractors:
-                st.warning("⚠️ No hay contratistas activos. Debe crear un contratista antes de registrar contenedores.")
-                st.form_submit_button("Crear Contenedor", disabled=True)
-            else:
+        if not contractors:
+            st.warning("⚠️ No hay contratistas activos. Debe crear un contratista antes de registrar contenedores.")
+        else:
+            with st.form("new_container"):
+                st.subheader("Datos del Contenedor")
+                
+                code = st.text_input(
+                    "Código del Contenedor *", 
+                    placeholder="ej. TOLVA-204",
+                    help="Código visual pintado en el contenedor"
+                )
+                
+                # Contractor dropdown
                 contractor_opts = {f"{c.name} ({c.rut or 'Sin RUT'})": c.id for c in contractors}
                 sel_contractor = st.selectbox("Contratista *", list(contractor_opts.keys()))
                 

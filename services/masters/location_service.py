@@ -35,11 +35,14 @@ class LocationService:
         # SiteRepository overrides it.
         return self.site_repo.get_by_id(site_id, include_plots=include_plots)
 
-    def get_all_sites(self) -> List[Site]:
+    def get_all_sites(self, active_only: bool = False) -> List[Site]:
         """
-        Retrieves all active sites.
+        Retrieves all sites, optionally filtering by active status.
         """
-        return self.site_repo.get_all_ordered()
+        sites = self.site_repo.get_all_ordered()
+        if active_only:
+            return [s for s in sites if s.is_active]
+        return sites
 
     def create_plot(self, plot: Plot) -> Plot:
         """

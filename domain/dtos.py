@@ -23,3 +23,38 @@ class MetalAnalysisDTO:
 class ApplicationScenarioDTO:
     crop_n_requirement: float # lbs/acre or kg/ha
     injection_method: bool = False # True = Injection (Higher Kvol), False = Surface
+
+@dataclass
+class CreateLoadDTO:
+    origin_facility_id: int
+    contractor_id: int
+    vehicle_id: int
+    driver_id: int
+    destination_site_id: int
+    destination_plot_id: int
+    material_class: str
+    created_by_user_id: int
+    container_id: Optional[int] = None
+    gross_weight: Optional[float] = None
+    tare_weight: Optional[float] = None
+    dispatch_time: Optional[str] = None # ISO format string
+
+@dataclass
+class LoadDTO:
+    id: int
+    manifest_code: str
+    origin_facility_id: int
+    contractor_id: int
+    vehicle_id: int
+    driver_id: int
+    destination_site_id: int
+    destination_plot_id: int
+    status: str
+    material_class: Optional[str] = None
+    container_id: Optional[int] = None
+    gross_weight: Optional[float] = None
+    tare_weight: Optional[float] = None
+    net_weight: Optional[float] = None
+    dispatch_time: Optional[str] = None
+    arrival_time: Optional[str] = None
+    created_at: Optional[str] = None
