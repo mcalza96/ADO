@@ -12,16 +12,17 @@ class AuthService(BaseService):
         """
         Creates a new user with hashed password.
         """
-        # Simple hashing for demo purposes
-        pwd_hash = hashlib.sha256(user.password_hash.encode()).hexdigest() if user.password_hash else ""
+        # Hash password before saving
+        if user.password_hash:
+            user.password_hash = hashlib.sha256(user.password_hash.encode()).hexdigest()
         
-        return self.user_repository.create(user, pwd_hash)
+        return self.user_repository.add(user)
 
     def get_user_by_username(self, username: str) -> Optional[User]:
         """
         Retrieves a user by username.
         """
-        return self.user_repository.get_by_username(username)
+        return self.user_repository.get_by_attribute("username", username)
 
     def authenticate(self, username: str, password: str) -> Optional[User]:
         """

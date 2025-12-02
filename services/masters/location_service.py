@@ -29,20 +29,18 @@ class LocationService:
         st.cache_data.clear()
         return self.site_repo.update(site)
     
-    def get_site(self, site_id: int, include_plots: bool = False) -> Optional[Site]:
+    def get_site(self, site_id: int) -> Optional[Site]:
         """
         Retrieves a site by ID.
         """
-        return self.site_repo.get_by_id(site_id, include_plots=include_plots)
+        return self.site_repo.get_by_id(site_id)
 
     @st.cache_data(ttl=3600)
     def get_all_sites(_self, active_only: bool = False) -> List[Site]:
         """
         Retrieves all sites, optionally filtering by active status.
         """
-        sites = _self.site_repo.get_all_ordered()
-        if active_only:
-            return [s for s in sites if s.is_active]
+        sites = _self.site_repo.get_all(active_only=active_only)
         return sites
 
     def create_plot(self, plot: Plot) -> Plot:

@@ -24,9 +24,12 @@ class Load:
     
     # Operational Data
     material_class: Optional[str] = None
+    guide_number: Optional[str] = None  # Guía de despacho
     gross_weight: Optional[float] = None
     tare_weight: Optional[float] = None
     net_weight: Optional[float] = None
+    weight_net: Optional[float] = None  # Alias for net_weight (backward compatibility)
+    weight_gross_reception: Optional[float] = None  # Peso bruto en recepción
     
     # Status and Timing
     status: str = 'CREATED'

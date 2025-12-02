@@ -66,6 +66,7 @@ def main():
         # Extract all services needed for different modules
         treatment_plant_service = services.treatment_plant_service
         client_service = services.client_service
+        facility_service = services.facility_service
         contractor_service = services.contractor_service
         container_service = services.container_service
         location_service = services.location_service
@@ -132,7 +133,7 @@ def main():
                 client_portal_page(reporting_service)
 
         elif module == "Portal Clientes":
-            requests_page(client_service, location_service, logistics_service, treatment_plant_service)
+            requests_page(client_service, facility_service, location_service, logistics_service, treatment_plant_service)
             
         elif module == "Transporte":
             if sub_menu == "Planificación":
@@ -153,6 +154,7 @@ def main():
         elif module == "Configuración":
             config_page(
                 client_service=client_service,
+                facility_service=facility_service,
                 contractor_service=contractor_service,
                 treatment_plant_service=treatment_plant_service,
                 container_service=container_service,

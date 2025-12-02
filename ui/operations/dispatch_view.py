@@ -46,13 +46,13 @@ def dispatch_view(vehicle_service, dispatch_service, location_service, treatment
     selected_vehicle = vehicle_map[selected_plate]
 
     # --- 2. Obtener Cargas ---
-    # Use new repository methods
+    # Use service methods instead of direct repository access
     # Check for Active Load (InTransit or Arrived)
-    active_load = dispatch_service.load_repo.get_active_load(selected_vehicle.id)
+    active_load = dispatch_service.get_active_load(selected_vehicle.id)
     current_load = active_load
 
     # Check for Scheduled Loads (Assigned to this vehicle but not started)
-    scheduled_loads = dispatch_service.load_repo.get_assignable_loads(selected_vehicle.id)
+    scheduled_loads = dispatch_service.get_assignable_loads(selected_vehicle.id)
     if scheduled_loads:
         # Show list to accept
         st.info(f"Tienes {len(scheduled_loads)} viaje(s) asignado(s).")
@@ -144,9 +144,9 @@ def dispatch_view(vehicle_service, dispatch_service, location_service, treatment
         # Show some details
         with st.expander("Ver Detalles de Carga"):
             st.write(f"**ID Carga:** {load_id}")
-            st.write(f"**Producto/Lote:** {current_load.get('batch_id', 'N/A')}") 
-            st.write(f"**Peso Neto Estimado:** {current_load.get('weight_net', 0)} kg")
-            st.write(f"**Guía:** {current_load.get('guide_number', 'Pendiente')}")
+            st.write(f"**Producto/Lote:** {getattr(current_load, 'batch_id', 'N/A')}") 
+            st.write(f"**Peso Neto Estimado:** {getattr(current_load, 'weight_net', 0)} kg")
+            st.write(f"**Guía:** {getattr(current_load, 'guide_number', 'Pendiente')}")
         
         st.markdown("### 🏁 Llegada a Destino")
         
@@ -173,16 +173,16 @@ def dispatch_view(vehicle_service, dispatch_service, location_service, treatment
             c1, c2 = st.columns(2)
             with c1:
                 ticket_input = st.text_input("Nro Ticket Báscula")
-                guide_input = st.text_input("Nro Guía Despacho", value=current_load.get('guide_number') or "")
+                guide_input = st.text_input("Nro Guía Despacho", value=getattr(current_load, 'guide_number', None) or "")
             with c2:
-                weight_input = st.number_input("Peso Neto Final (kg)", min_value=0.0, step=10.0, value=float(current_load.get('weight_net') or 0.0))
+                weight_input = st.number_input("Peso Neto Final (kg)", min_value=0.0, step=10.0, value=float(getattr(current_load, 'weight_net', None) or 0.0))
             
             st.markdown("#### Calidad Final")
             c3, c4 = st.columns(2)
             with c3:
-                ph_input = st.number_input("pH Final (5.0 - 9.0)", min_value=0.0, max_value=14.0, step=0.1, value=float(current_load.get('quality_ph') or 7.0))
+                ph_input = st.number_input("pH Final (5.0 - 9.0)", min_value=0.0, max_value=14.0, step=0.1, value=float(getattr(current_load, 'quality_ph', None) or 7.0))
             with c4:
-                humidity_input = st.number_input("Humedad Final (%)", min_value=0.0, max_value=100.0, step=0.1, value=float(current_load.get('quality_humidity') or 50.0))
+                humidity_input = st.number_input("Humedad Final (%)", min_value=0.0, max_value=100.0, step=0.1, value=float(getattr(current_load, 'quality_humidity', None) or 50.0))
                 
             submit_close = st.form_submit_button("✅ Cerrar Viaje y Entregar", use_container_width=True, type="primary")
             

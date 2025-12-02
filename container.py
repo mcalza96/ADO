@@ -28,6 +28,7 @@ from models.masters.transport import Contractor
 from models.masters.driver import Driver
 from models.masters.vehicle import Vehicle
 from models.masters.treatment_plant import TreatmentPlant
+from models.masters.facility import Facility
 from models.masters.container import Container
 
 from services.masters.location_service import LocationService
@@ -79,6 +80,7 @@ def get_container() -> SimpleNamespace:
     application_repo = BaseRepository(db_manager, NitrogenApplication, "nitrogen_applications")
     vehicle_repo = BaseRepository(db_manager, Vehicle, "vehicles")
     client_repo = BaseRepository(db_manager, Client, "clients")
+    facility_repo = BaseRepository(db_manager, Facility, "facilities")
     contractor_repo = BaseRepository(db_manager, Contractor, "contractors")
     driver_repo = BaseRepository(db_manager, Driver, "drivers")
     
@@ -124,8 +126,9 @@ def get_container() -> SimpleNamespace:
     # Treatment Batch Service (for DS4 monitoring)
     treatment_batch_service = TreatmentBatchService(db_manager)
     
-    # Master Services
+    # Master Services (using GenericCrudService)
     client_service = GenericCrudService(client_repo)
+    facility_service = GenericCrudService(facility_repo)
     contractor_service = GenericCrudService(contractor_repo)
     driver_service = GenericCrudService(driver_repo)
     vehicle_service = GenericCrudService(vehicle_repo)
@@ -158,6 +161,7 @@ def get_container() -> SimpleNamespace:
         logistics_service=logistics_service,
         treatment_reception_service=treatment_reception_service,
         client_service=client_service,
+        facility_service=facility_service,
         contractor_service=contractor_service,
         driver_service=driver_service,
         vehicle_service=vehicle_service,

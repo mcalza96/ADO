@@ -144,23 +144,21 @@ class LoadRepository(BaseRepository[Load]):
         query = """
             SELECT 
                 l.id, 
-                l.manifest_code, 
                 l.status,
                 l.scheduled_date,
                 l.created_at,
-                c.name as contractor_name,
+                l.weight_net,
                 v.license_plate as vehicle_plate,
                 d.name as driver_name,
                 f.name as origin_facility_name,
                 s.name as destination_site_name,
                 tp.name as destination_plant_name
             FROM loads l
-            LEFT JOIN contractors c ON l.contractor_id = c.id
             LEFT JOIN vehicles v ON l.vehicle_id = v.id
             LEFT JOIN drivers d ON l.driver_id = d.id
             LEFT JOIN facilities f ON l.origin_facility_id = f.id
             LEFT JOIN sites s ON l.destination_site_id = s.id
-            LEFT JOIN facilities tp ON l.destination_treatment_plant_id = tp.id
+            LEFT JOIN treatment_plants tp ON l.destination_treatment_plant_id = tp.id
             WHERE 1=1
         """
         params = []

@@ -3,10 +3,12 @@ from ui.masters import containers_view, transport_view, locations_view
 from ui.generic_master_view import GenericMasterView, FieldConfig
 from models.masters.client import Client
 from models.masters.treatment_plant import TreatmentPlant
+from models.masters.facility import Facility
 
 
 def config_page(
     client_service,
+    facility_service,
     contractor_service,
     treatment_plant_service,
     container_service,
@@ -21,6 +23,7 @@ def config_page(
     
     Args:
         client_service: ClientService instance
+        facility_service: FacilityService instance
         contractor_service: ContractorService instance
         treatment_plant_service: TreatmentPlantService instance
         container_service: ContainerService instance
@@ -45,8 +48,9 @@ def config_page(
     with tab_empresas:
         st.header("Gestión de Empresas")
         
-        sub_tab_clients, sub_tab_plants = st.tabs([
+        sub_tab_clients, sub_tab_facilities, sub_tab_plants = st.tabs([
             "Clientes (Generadores)",
+            "Plantas del Cliente (Orígenes)",
             "Plantas de Tratamiento (Propias)"
         ])
         
@@ -63,6 +67,32 @@ def config_page(
                     "contact_name": FieldConfig(label="Nombre Contacto"),
                     "contact_email": FieldConfig(label="Email Contacto"),
                     "address": FieldConfig(label="Dirección", widget="text_area")
+                }
+            ).render()
+        
+        with sub_tab_facilities:
+            # Use GenericMasterView for Client Facilities (origin plants)
+            GenericMasterView(
+                service=facility_service,
+                model_class=Facility,
+                title="Plantas del Cliente (Instalaciones de Origen)",
+                display_columns=["name", "client_id", "address", "allowed_vehicle_types"],
+                form_config={
+                    "name": FieldConfig(label="Nombre de Planta", required=True),
+                    "client_id": FieldConfig(
+                        label="Cliente",
+                        widget="selectbox",
+                        options=client_service,
+                        required=True,
+                        help="Seleccione el cliente dueño de esta instalación"
+                    ),
+                    "address": FieldConfig(label="Dirección", widget="text_area"),
+                    "latitude": FieldConfig(label="Latitud", widget="number_input"),
+                    "longitude": FieldConfig(label="Longitud", widget="number_input"),
+                    "allowed_vehicle_types": FieldConfig(
+                        label="Tipos de Vehículos Permitidos",
+                        help="Ej: BATEA,AMPLIROLL"
+                    )
                 }
             ).render()
         
@@ -84,25 +114,8 @@ def config_page(
     # TAB 2: TRANSPORTE
     # ==========================================
     with tab_transporte:
-        st.header("Gestión de Transporte y Logística")
-        
-        # Horizontal radio for transport sub-sections
-        transport_section = st.radio(
-            "Seleccione:",
-            ["Contratistas", "Vehículos", "Conductores", "Contenedores"],
-            horizontal=True,
-            label_visibility="collapsed"
-        )
-        
-        st.divider()
-        
-        if transport_section in ["Contratistas", "Vehículos", "Conductores"]:
-            # Use refactored transport_view with dependency injection
-            transport_view.render(driver_service, vehicle_service, contractor_service)
-        
-        elif transport_section == "Contenedores":
-            # Use refactored containers_view with dependency injection
-            containers_view.render(container_service, contractor_service)
+        # Use refactored transport_view with dependency injection
+        transport_view.render(driver_service, vehicle_service, contractor_service)
     
     # ==========================================
     # TAB 3: AGRONOMÍA (Sites & Plots)

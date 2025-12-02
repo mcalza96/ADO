@@ -2,7 +2,7 @@ import streamlit as st
 from container import get_container
 import datetime
 
-def requests_page(client_service, location_service, logistics_service, treatment_plant_service):
+def requests_page(client_service, facility_service, location_service, logistics_service, treatment_plant_service):
     st.title("📝 Solicitud de Retiros")
     st.markdown("Ingrese las solicitudes de retiro para sus plantas.")
     
@@ -18,8 +18,8 @@ def requests_page(client_service, location_service, logistics_service, treatment
     sel_client = st.selectbox("Cliente (Generador)", list(c_opts.keys()))
     client_id = c_opts[sel_client]
     
-    # 2. Select Facility
-    facilities = treatment_plant_service.get_by_client(client_id)
+    # 2. Select Facility (using facility_service for client plants)
+    facilities = facility_service.get_by_client(client_id)
     if not facilities:
         st.warning("Este cliente no tiene plantas registradas.")
         return

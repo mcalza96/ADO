@@ -92,7 +92,7 @@ def render(location_service):
                                 name=name,
                                 owner_name=owner,
                                 region=region,
-                                address_reference=address,
+                                address=address,
                                 latitude=latitude,
                                 longitude=longitude
                             )
@@ -109,7 +109,7 @@ def render(location_service):
         
         else:
             # Edit Existing Site
-            site = location_service.get_site_by_id(selected_site_id)
+            site = location_service.get_site(selected_site_id)
             
             if not site:
                 st.error("Predio no encontrado")
@@ -129,7 +129,7 @@ def render(location_service):
                         ["Metropolitana", "Valparaíso", "O'Higgins", "Maule", "Biobío", "Araucanía", "Los Lagos"],
                         index=0 if not site.region else ["Metropolitana", "Valparaíso", "O'Higgins", "Maule", "Biobío", "Araucanía", "Los Lagos"].index(site.region) if site.region in ["Metropolitana", "Valparaíso", "O'Higgins", "Maule", "Biobío", "Araucanía", "Los Lagos"] else 0
                     )
-                    address = st.text_input("Dirección", value=site.address_reference or "")
+                    address = st.text_input("Dirección", value=site.address or "")
                     
                     col1, col2 = st.columns(2)
                     with col1:
@@ -142,7 +142,7 @@ def render(location_service):
                             site.name = name
                             site.owner_name = owner
                             site.region = region
-                            site.address_reference = address
+                            site.address = address
                             site.latitude = latitude
                             site.longitude = longitude
                             

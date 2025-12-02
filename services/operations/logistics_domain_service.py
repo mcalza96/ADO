@@ -232,5 +232,17 @@ class LogisticsDomainService:
     def get_loads_by_status(self, status: str) -> List[Load]:
         return self.load_repo.get_by_status(status)
         
-    def get_planning_loads(self, status: str) -> List[dict]:
+    def get_planning_loads(self, status: str) -> List[Load]:
         return self.load_repo.get_loads_with_details(status=status)
+    
+    def get_in_transit_loads(self) -> List[Load]:
+        """Get loads that are in transit."""
+        return self.load_repo.get_by_status('InTransit')
+    
+    def get_assignable_loads(self, vehicle_id: int) -> List[Load]:
+        """Get loads assignable to a vehicle."""
+        return self.load_repo.get_assignable_loads(vehicle_id)
+    
+    def get_active_load(self, vehicle_id: int) -> Optional[Load]:
+        """Get active load for a vehicle."""
+        return self.load_repo.get_active_load(vehicle_id)
