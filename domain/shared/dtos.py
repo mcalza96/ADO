@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, List
+import datetime
 
 @dataclass
 class NutrientAnalysisDTO:
@@ -58,3 +59,13 @@ class LoadDTO:
     dispatch_time: Optional[str] = None
     arrival_time: Optional[str] = None
     created_at: Optional[str] = None
+
+@dataclass
+class AssignmentRequest:
+    load_ids: List[int]
+    driver_id: Optional[int]
+    vehicle_id: Optional[int]
+    scheduled_date: datetime.date
+    site_id: Optional[int] = None
+    treatment_plant_id: Optional[int] = None
+

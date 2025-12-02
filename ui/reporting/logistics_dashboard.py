@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from container import get_container
+from domain.logistics.entities.load_status import LoadStatus
 
 def logistics_dashboard_page(reporting_service):
     st.header("🚛 Torre de Control Logística")
@@ -16,9 +17,9 @@ def logistics_dashboard_page(reporting_service):
         st.info("✅ Sin camiones en circuito. Todos los viajes han sido completados.")
         return
     
-    # Separate metrics by status
-    df_dispatched = df[df['status'] == 'Dispatched']
-    df_arrived = df[df['status'] == 'Arrived']
+    # Separate metrics by status using enum
+    df_dispatched = df[df['status'] == LoadStatus.EN_ROUTE_DESTINATION.value]
+    df_arrived = df[df['status'] == LoadStatus.AT_DESTINATION.value]
     
     # Define delay threshold (e.g., 4 hours)
     DELAY_THRESHOLD_HOURS = 4.0

@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import datetime
+from domain.logistics.entities.load_status import LoadStatus
+from ui.components.assignment_form import render_assignment_sidebar
 
 def planning_page(logistics_service, contractor_service, driver_service, vehicle_service, location_service, treatment_plant_service):
     st.title("🗓️ Tablero de Planificación (Control Tower)")
@@ -11,7 +13,7 @@ def planning_page(logistics_service, contractor_service, driver_service, vehicle
     # --- Tab 1: Backlog ---
     with tab_backlog:
         # Fetch Requested Loads (Optimized)
-        requested_loads = logistics_service.get_planning_loads('Requested')
+        requested_loads = logistics_service.get_planning_loads(LoadStatus.REQUESTED.value)
 
         if not requested_loads:
             st.info("No hay solicitudes pendientes de planificación.")
@@ -44,75 +46,34 @@ def planning_page(logistics_service, contractor_service, driver_service, vehicle
                 selected_indices = selected_rows
                 selected_ids = df.iloc[selected_indices]["ID"].tolist()
                 
-                st.sidebar.header(f"Asignando {len(selected_ids)} Cargas")
-                st.sidebar.markdown(f"**IDs Seleccionados:** {', '.join(map(str, selected_ids))}")
+                assignment_request = render_assignment_sidebar(
+                    selected_ids,
+                    contractor_service,
+                    driver_service,
+                    vehicle_service,
+                    location_service,
+                    treatment_plant_service
+                )
                 
-                with st.sidebar.form("assignment_form"):
-                    st.subheader("Recursos")
-                    
-                    # 1. Contractor & Driver
-                    contractors = contractor_service.get_all_contractors()
-                    c_opts = {c.name: c.id for c in contractors}
-                    sel_c = st.selectbox("Transportista", list(c_opts.keys()))
-                    
-                    driver_id = None
-                    vehicle_id = None
-                    
-                    if sel_c:
-                        c_id = c_opts[sel_c]
-                        drivers = driver_service.get_drivers_by_contractor(c_id)
-                        d_opts = {d.name: d.id for d in drivers}
-                        sel_d = st.selectbox("Conductor", list(d_opts.keys()))
-                        if sel_d: driver_id = d_opts[sel_d]
-                        
-                        vehicles = vehicle_service.get_vehicles_by_contractor(c_id)
-                        v_opts = {f"{v.license_plate} ({v.type})": v.id for v in vehicles}
-                        sel_v = st.selectbox("Vehículo", list(v_opts.keys()))
-                        if sel_v: vehicle_id = v_opts[sel_v]
-                    
-                    st.subheader("Destino")
-                    dest_type = st.radio("Tipo Destino", ["Campo (Sitio)", "Planta (Tratamiento)"])
-                    
-                    site_id = None
-                    plant_id = None
-                    
-                    if dest_type == "Campo (Sitio)":
-                        sites = location_service.get_all_sites(active_only=True)
-                        s_opts = {s.name: s.id for s in sites}
-                        sel_s = st.selectbox("Predio Destino", list(s_opts.keys()))
-                        if sel_s: site_id = s_opts[sel_s]
-                    else:
-                        plants = treatment_plant_service.get_all()
-                        p_opts = {p.name: p.id for p in plants}
-                        sel_p = st.selectbox("Planta Destino", list(p_opts.keys()))
-                        if sel_p: plant_id = p_opts[sel_p]
-                        
-                    scheduled_date = st.date_input("Fecha Programada", datetime.date.today())
-                    
-                    if st.form_submit_button("💾 Confirmar Asignación"):
-                        success_count = 0
-                        for load_id in selected_ids:
-                            try:
-                                logistics_service.schedule_load(
-                                    load_id=load_id,
-                                    driver_id=driver_id,
-                                    vehicle_id=vehicle_id,
-                                    scheduled_date=scheduled_date,
-                                    site_id=site_id,
-                                    treatment_plant_id=plant_id
-                                )
-                                success_count += 1
-                            except Exception as e:
-                                st.error(f"Error asignando carga {load_id}: {e}")
-                        
-                        if success_count > 0:
-                            st.success(f"Se programaron {success_count} cargas exitosamente.")
-                            st.rerun()
+                if assignment_request:
+                    try:
+                        logistics_service.schedule_loads_bulk(
+                            load_ids=assignment_request.load_ids,
+                            driver_id=assignment_request.driver_id,
+                            vehicle_id=assignment_request.vehicle_id,
+                            scheduled_date=assignment_request.scheduled_date,
+                            site_id=assignment_request.site_id,
+                            treatment_plant_id=assignment_request.treatment_plant_id
+                        )
+                        st.success(f"Se programaron {len(assignment_request.load_ids)} cargas exitosamente.")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error asignando cargas: {e}")
 
     # --- Tab 2: Scheduled ---
     with tab_scheduled:
         # Fetch Scheduled Loads (Optimized)
-        scheduled_loads = logistics_service.get_planning_loads('Scheduled')
+        scheduled_loads = logistics_service.get_planning_loads(LoadStatus.ASSIGNED.value)
         
         if not scheduled_loads:
             st.info("No hay cargas programadas.")

@@ -29,10 +29,9 @@ class TaskResolver:
     Analiza el estado de las cargas y maquinaria para generar una "Bandeja de Entrada".
     """
     
-    def __init__(self, db_manager: DatabaseManager):
-        self.db_manager = db_manager
-        self.load_repo = LoadRepository(db_manager)
-        self.log_repo = MachineLogRepository(db_manager)
+    def __init__(self, load_repository, machine_log_repository):
+        self.load_repo = load_repository
+        self.log_repo = machine_log_repository
         
         # Mapeo de Validador -> Configuración de Tarea
         self.validator_map = {

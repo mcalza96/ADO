@@ -19,7 +19,7 @@ from datetime import datetime
 # TYPE ALIASES
 # ============================================================================
 
-FormRenderer = Callable[[int], Optional[Dict[str, Any]]]
+FormRenderer = Callable[[Dict[str, Any]], Optional[Dict[str, Any]]]
 
 
 # ============================================================================
@@ -439,6 +439,300 @@ def render_pickup_confirmation_form(load_id: int) -> Optional[Dict[str, Any]]:
                 "loading_time_minutes": loading_time_minutes,
                 "observations": observations,
                 "driver_id": st.session_state.get("user_id", 1),
+            }
+    
+    return None
+
+
+# ============================================================================
+# ADDITIONAL FORMS FOR TASK RESOLVER
+# ============================================================================
+
+@register_form("lab_check")
+def render_lab_check_form(context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Alias para lab_analysis_result - compatibilidad con TaskResolver
+    """
+    load = context.get('load')
+    return render_lab_analysis_form(load.id if load else 0)
+
+
+@register_form("gate_check")
+def render_gate_check_form(context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Alias para gate_entry_check - compatibilidad con TaskResolver
+    """
+    load = context.get('load')
+    return render_gate_entry_form(load.id if load else 0)
+
+
+@register_form("pickup_check")
+def render_pickup_check_form(context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Alias para pickup_confirmation - compatibilidad con TaskResolver
+    """
+    load = context.get('load')
+    return render_pickup_confirmation_form(load.id if load else 0)
+
+
+@register_form("weight_check")
+def render_weight_check_form(context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Formulario inteligente de pesaje - determina si es entrada o salida
+    basado en los atributos existentes de la carga.
+    """
+    load = context.get('load')
+    if not load:
+        st.error("❌ No se proporcionó información de la carga")
+        return None
+    
+    # Determinar si es entrada o salida basado en atributos
+    has_entry_weight = load.attributes and 'entry_weight_ticket' in load.attributes
+    
+    if has_entry_weight:
+        # Ya tiene peso de entrada, entonces es salida
+        return render_exit_weight_form(load.id)
+    else:
+        # No tiene peso de entrada, entonces es entrada
+        return render_entry_weight_form(load.id)
+
+
+@register_form("geofence_check")
+def render_geofence_check_form(context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Formulario de Confirmación de Geofence (Llegada a Origen).
+    
+    Captura: Confirmación automática/manual de llegada a coordenadas
+    """
+    load = context.get('load')
+    if not load:
+        return None
+    
+    st.subheader("📍 Confirmar Llegada a Origen")
+    st.markdown("*Confirma que has llegado al punto de origen*")
+    
+    with st.form(f"geofence_form_{load.id}", clear_on_submit=False):
+        st.info("🗺️ Sistema de geolocalización detectó tu posición")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            latitude = st.number_input(
+                "Latitud",
+                value=-33.4489,
+                format="%.6f",
+                help="Coordenada de latitud actual"
+            )
+        
+        with col2:
+            longitude = st.number_input(
+                "Longitud", 
+                value=-70.6693,
+                format="%.6f",
+                help="Coordenada de longitud actual"
+            )
+        
+        arrival_time = st.time_input(
+            "Hora de Llegada",
+            value=datetime.now().time(),
+            help="Hora de llegada al origen"
+        )
+        
+        observations = st.text_area(
+            "Observaciones",
+            placeholder="Condiciones del sitio, acceso, etc...",
+            height=80
+        )
+        
+        submitted = st.form_submit_button(
+            "✅ Confirmar Llegada",
+            use_container_width=True,
+            type="primary"
+        )
+        
+        if submitted:
+            return {
+                "geofence_confirmation": {
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "arrival_time": arrival_time.isoformat(),
+                    "timestamp": datetime.now().isoformat(),
+                    "observations": observations,
+                    "driver_id": st.session_state.get("user_id", 1),
+                }
+            }
+    
+    return None
+
+
+@register_form("ticket_upload")
+def render_ticket_upload_form(context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Formulario de Subida de Ticket de Pesaje Final.
+    
+    Captura: Archivo adjunto y metadatos del ticket
+    """
+    load = context.get('load')
+    if not load:
+        return None
+    
+    st.subheader("📄 Subir Ticket de Pesaje Final")
+    st.markdown("*Adjunta el ticket de báscula final*")
+    
+    with st.form(f"ticket_form_{load.id}", clear_on_submit=False):
+        ticket_file = st.file_uploader(
+            "Archivo del Ticket",
+            type=['pdf', 'jpg', 'jpeg', 'png'],
+            help="Fotografía o PDF del ticket de pesaje"
+        )
+        
+        ticket_number = st.text_input(
+            "Número de Ticket",
+            placeholder="TKT-FINAL-00123",
+            help="Número del ticket final"
+        )
+        
+        final_weight = st.number_input(
+            "Peso Final Registrado (kg)",
+            min_value=0,
+            value=0,
+            step=100,
+            help="Peso neto final según ticket"
+        )
+        
+        notes = st.text_area(
+            "Notas Adicionales",
+            placeholder="Observaciones sobre el ticket final...",
+            height=60
+        )
+        
+        submitted = st.form_submit_button(
+            "💾 Guardar Ticket",
+            use_container_width=True,
+            type="primary"
+        )
+        
+        if submitted:
+            if not ticket_number:
+                st.error("⚠️ Número de ticket es obligatorio")
+                return None
+            
+            result = {
+                "weight_ticket_final": {
+                    "ticket_number": ticket_number.upper(),
+                    "final_weight": final_weight,
+                    "notes": notes,
+                    "timestamp": datetime.now().isoformat(),
+                    "uploaded_by": st.session_state.get("user_id", 1),
+                }
+            }
+            
+            # Si hay archivo, guardar referencia (en producción, subir a S3/Storage)
+            if ticket_file:
+                result["weight_ticket_final"]["file_name"] = ticket_file.name
+                result["weight_ticket_final"]["file_size"] = ticket_file.size
+                # TODO: Implementar upload a storage cloud
+                st.success(f"✅ Archivo '{ticket_file.name}' listo para subir")
+            
+            return result
+    
+    return None
+
+
+@register_form("daily_log")
+def render_daily_log_form(context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Formulario de Parte Diario de Maquinaria.
+    
+    Captura: Horómetro, combustible, actividad, observaciones
+    """
+    machine_id = context.get('machine_id', 1)
+    
+    st.subheader("🚜 Parte Diario de Maquinaria")
+    st.markdown(f"*Máquina #{machine_id}*")
+    
+    with st.form(f"daily_log_{machine_id}", clear_on_submit=False):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            start_hourmeter = st.number_input(
+                "Horómetro Inicial",
+                min_value=0.0,
+                value=1000.0,
+                step=0.1,
+                help="Lectura del horómetro al inicio del día"
+            )
+        
+        with col2:
+            end_hourmeter = st.number_input(
+                "Horómetro Final",
+                min_value=start_hourmeter,
+                value=start_hourmeter + 8.0,
+                step=0.1,
+                help="Lectura del horómetro al final del día"
+            )
+        
+        fuel_consumed = st.number_input(
+            "Combustible Consumido (litros)",
+            min_value=0.0,
+            value=50.0,
+            step=5.0,
+            help="Litros de combustible consumidos"
+        )
+        
+        activity_type = st.selectbox(
+            "Tipo de Actividad",
+            options=["Esparcido", "Incorporación", "Transporte Interno", "Mantenimiento", "Stand-by"],
+            help="Principal actividad realizada"
+        )
+        
+        area_worked = st.number_input(
+            "Área Trabajada (hectáreas)",
+            min_value=0.0,
+            value=5.0,
+            step=0.5,
+            help="Hectáreas trabajadas en el día"
+        )
+        
+        operational_status = st.selectbox(
+            "Estado Operacional",
+            options=["Operativo", "Requiere Mantención Menor", "Requiere Mantención Mayor", "Fuera de Servicio"],
+            help="Estado de la máquina al final del día"
+        )
+        
+        observations = st.text_area(
+            "Observaciones",
+            placeholder="Novedades, problemas detectados, condiciones del terreno...",
+            height=100
+        )
+        
+        submitted = st.form_submit_button(
+            "💾 Guardar Parte Diario",
+            use_container_width=True,
+            type="primary"
+        )
+        
+        if submitted:
+            hours_worked = end_hourmeter - start_hourmeter
+            
+            if hours_worked <= 0:
+                st.error("⚠️ El horómetro final debe ser mayor al inicial")
+                return None
+            
+            return {
+                "machine_log": {
+                    "machine_id": machine_id,
+                    "date": datetime.now().date().isoformat(),
+                    "start_hourmeter": start_hourmeter,
+                    "end_hourmeter": end_hourmeter,
+                    "hours_worked": hours_worked,
+                    "fuel_consumed": fuel_consumed,
+                    "activity_type": activity_type,
+                    "area_worked": area_worked,
+                    "operational_status": operational_status,
+                    "observations": observations,
+                    "operator_id": st.session_state.get("user_id", 1),
+                    "timestamp": datetime.now().isoformat(),
+                }
             }
     
     return None

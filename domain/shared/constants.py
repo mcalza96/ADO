@@ -35,3 +35,22 @@ EPA_503_TABLE1_LIMITS = {
 
 # Default nitrogen application limit if not specified by site (kg N/ha/year)
 DEFAULT_NITROGEN_LIMIT = 200.0
+
+from enum import Enum
+
+class TaskPriority(Enum):
+    HIGH = "High"
+    MEDIUM = "Medium"
+    LOW = "Low"
+
+# LoadStatus is now in domain.logistics.entities.load_status
+# Import from there instead of using this deprecated version
+
+class Role(Enum):
+    DRIVER = "Driver"
+    ADMIN = "Admin"
+    OPERATOR = "Operator"
+    LAB_TECH = "LabTech"
+    DISPATCHER = "Dispatcher"
+
+

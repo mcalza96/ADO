@@ -58,7 +58,7 @@ class LogisticsDomainService:
             id=None,
             origin_facility_id=facility_id,
             origin_treatment_plant_id=plant_id,
-            status='Requested',
+            status=LoadStatus.REQUESTED.value,
             requested_date=requested_date,
             created_at=datetime.now()
         )
@@ -74,8 +74,8 @@ class LogisticsDomainService:
         if not load:
             raise ValueError("Load not found")
             
-        if load.status != 'Requested':
-            raise TransitionException(f"Cannot schedule load. Current status: {load.status}. Expected: 'Requested'.")
+        if load.status != LoadStatus.REQUESTED.value:
+            raise TransitionException(f"Cannot schedule load. Current status: {load.status}. Expected: '{LoadStatus.REQUESTED.value}'.")
         
         load.driver_id = driver_id
         load.vehicle_id = vehicle_id
@@ -89,12 +89,23 @@ class LogisticsDomainService:
             load.destination_treatment_plant_id = None
             
         load.scheduled_date = scheduled_date
-        load.status = 'Scheduled'
+        load.status = LoadStatus.ASSIGNED.value
         load.updated_at = datetime.now()
         load.sync_status = 'PENDING'
         load.last_updated_local = datetime.now()
         
         return self.load_repo.update(load)
+
+    def schedule_loads_bulk(self, load_ids: List[int], driver_id: int, vehicle_id: int, scheduled_date: datetime, 
+                         site_id: Optional[int] = None, treatment_plant_id: Optional[int] = None, 
+                         container_quantity: Optional[int] = None) -> int:
+        success_count = 0
+        with self.db_manager:
+            for load_id in load_ids:
+                self.schedule_load(load_id, driver_id, vehicle_id, scheduled_date, site_id, treatment_plant_id, container_quantity)
+                success_count += 1
+        return success_count
+
 
     # --- Dispatch Phase (Gate Out) ---
     def _validate_capacity(self, vehicle_id: int, container_id: Optional[int]) -> None:
@@ -179,18 +190,18 @@ class LogisticsDomainService:
 
     def accept_trip(self, load_id: int) -> bool:
         load = self.load_repo.get_by_id(load_id)
-        if not load or load.status != 'Scheduled':
+        if not load or load.status != LoadStatus.ASSIGNED.value:
             raise ValueError("Invalid load or status")
-        load.status = 'Accepted'
+        load.status = LoadStatus.ACCEPTED.value
         load.sync_status = 'PENDING'
         load.last_updated_local = datetime.now()
         return self.load_repo.update(load)
 
     def start_trip(self, load_id: int) -> bool:
         load = self.load_repo.get_by_id(load_id)
-        if not load or load.status != 'Accepted':
+        if not load or load.status != LoadStatus.ACCEPTED.value:
             raise ValueError("Invalid load or status")
-        load.status = 'InTransit'
+        load.status = LoadStatus.EN_ROUTE_DESTINATION.value
         load.dispatch_time = datetime.now()
         load.sync_status = 'PENDING'
         load.last_updated_local = datetime.now()
@@ -354,6 +365,25 @@ class LogisticsDomainService:
         # 6. Actualizar estado de la carga
         load.status = new_status.value
         load.updated_at = datetime.now()
+
+        # --- PROMOTION LOGIC ---
+        # Promote critical data from JSON attributes to SQL columns for BI/Reporting
+        if 'gross_weight' in load.attributes:
+             try:
+                 load.gross_weight = float(load.attributes['gross_weight'])
+             except (ValueError, TypeError):
+                 pass # Keep original or None if conversion fails
+        
+        if 'tare_weight' in load.attributes:
+             try:
+                 load.tare_weight = float(load.attributes['tare_weight'])
+             except (ValueError, TypeError):
+                 pass
+
+        if load.gross_weight is not None and load.tare_weight is not None:
+             load.net_weight = load.gross_weight - load.tare_weight
+             load.weight_net = load.net_weight # Alias
+
         success = self.load_repo.update(load)
         
         # 7. Publicar evento LoadStatusChanged
@@ -382,6 +412,51 @@ class LogisticsDomainService:
                 ))
         
         return success
+
+    def update_load_attributes(self, load_id: int, attributes_dict: Dict[str, Any]) -> bool:
+        """
+        Actualiza los atributos JSONB de una carga sin cambiar su estado.
+        
+        Método útil para guardar datos de formularios (checkpoints) antes de
+        intentar una transición de estado. Los atributos se mergean con los existentes.
+        
+        Args:
+            load_id: ID de la carga
+            attributes_dict: Diccionario con atributos a agregar/actualizar
+            
+        Returns:
+            True si la actualización fue exitosa
+            
+        Raises:
+            ValueError: Si la carga no existe
+            
+        Example:
+            # Guardar resultado de análisis de laboratorio
+            service.update_load_attributes(load_id, {
+                'lab_analysis_result': {
+                    'ph': 7.2,
+                    'humidity': 75.5,
+                    'timestamp': '2024-12-02T10:30:00'
+                }
+            })
+        """
+        load = self.load_repo.get_by_id(load_id)
+        if not load:
+            raise ValueError(f"Load {load_id} not found")
+        
+        # Asegurar que attributes existe
+        if not hasattr(load, 'attributes') or load.attributes is None:
+            load.attributes = {}
+        
+        # Mergear nuevos atributos
+        load.attributes.update(attributes_dict)
+        
+        # Actualizar timestamps de sincronización
+        load.updated_at = datetime.now()
+        load.sync_status = 'PENDING'
+        load.last_updated_local = datetime.now()
+        
+        return self.load_repo.update(load)
 
     def get_load_timeline(self, load_id: int) -> List[StatusTransition]:
         """

@@ -2,6 +2,7 @@ from typing import List, Optional
 from datetime import datetime
 from database.repository import BaseRepository
 from domain.logistics.entities.load import Load
+from domain.logistics.entities.load_status import LoadStatus
 from database.db_manager import DatabaseManager
 
 class LoadRepository(BaseRepository[Load]):
@@ -88,27 +89,26 @@ class LoadRepository(BaseRepository[Load]):
 
     def get_assignable_loads(self, vehicle_id: int) -> List[Load]:
         """
-        Returns loads that can be assigned to a vehicle (e.g., 'Scheduled').
+        Returns loads that can be assigned to a vehicle (ASSIGNED status).
         """
         with self.db_manager as conn:
             cursor = conn.cursor()
-            # Assuming assignable loads are those with status 'Scheduled'
-            # The vehicle_id parameter might be used for filtering if loads are pre-assigned to a vehicle
             cursor.execute(
-                f"SELECT * FROM {self.table_name} WHERE status = 'Scheduled' ORDER BY created_at ASC"
+                f"SELECT * FROM {self.table_name} WHERE status = ? ORDER BY created_at ASC",
+                (LoadStatus.ASSIGNED.value,)
             )
             rows = cursor.fetchall()
             return [self._map_row_to_model(dict(row)) for row in rows]
 
     def get_delivered_by_destination_type(self, destination_type: str, destination_id: int) -> List[Load]:
         """
-        Returns loads that have been delivered (e.g., 'ARRIVED' or 'DISPATCHED') filtered by destination type and ID.
+        Returns loads that have been delivered (AT_DESTINATION or COMPLETED status) filtered by destination type and ID.
         """
         with self.db_manager as conn:
             cursor = conn.cursor()
             
-            query = f"SELECT * FROM {self.table_name} WHERE status IN ('ARRIVED', 'DISPATCHED')"
-            params = []
+            query = f"SELECT * FROM {self.table_name} WHERE status IN (?, ?)"
+            params = [LoadStatus.AT_DESTINATION.value, LoadStatus.COMPLETED.value]
             
             if destination_type == 'TreatmentPlant':
                 query += " AND destination_treatment_plant_id = ?"

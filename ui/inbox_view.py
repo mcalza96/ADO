@@ -1,25 +1,16 @@
 import streamlit as st
 from container import get_container
 from services.ui.task_resolver import TaskResolver
-from ui.components.form_registry import FORM_REGISTRY
+from ui.components.forms import get_form_renderer
 from domain.logistics.entities.load_status import LoadStatus
 from domain.shared.exceptions import TransitionException, DomainException
 
-def render_inbox_view():
+def inbox_page(user_role: str, user_id: int):
     st.title("📥 Mi Bandeja de Entrada")
     
     # 1. Inicializar Servicios
     container = get_container()
-    resolver = TaskResolver(container.db_manager)
-    
-    # 2. Obtener Tareas (Mock User)
-    # En producción, esto vendría de st.session_state.user
-    user_role = st.sidebar.selectbox(
-        "Simular Rol", 
-        ["ADMIN", "OPERATOR", "LAB_TECH", "DRIVER", "GATE_KEEPER"],
-        help="Cambie el rol para ver diferentes tareas filtradas"
-    )
-    user_id = 1
+    resolver = container.task_resolver
     
     # 3. Obtener tareas con manejo de errores
     try:
@@ -88,7 +79,7 @@ def render_inbox_view():
         st.divider()
         
         # 6. Renderizar Formulario Dinámico
-        render_func = FORM_REGISTRY.get(selected_task.form_type)
+        render_func = get_form_renderer(selected_task.form_type)
         
         if render_func:
             try:
@@ -103,11 +94,11 @@ def render_inbox_view():
                                 load = selected_task.payload['load']
                                 target_status = LoadStatus(selected_task.payload['target_status'])
                                 
-                                # A. Actualizar Atributos
-                                if not load.attributes: 
-                                    load.attributes = {}
-                                load.attributes.update(form_data)
-                                container.logistics_service.load_repo.update(load)
+                                # A. Actualizar Atributos usando el método del servicio
+                                container.logistics_service.update_load_attributes(
+                                    load.id, 
+                                    form_data
+                                )
                                 
                                 # B. Intentar Transición
                                 success = container.logistics_service.transition_load(
@@ -131,12 +122,17 @@ def render_inbox_view():
                                     st.caption("Puede que falten otros requisitos. Verifique en el detalle de la carga.")
                                     
                             elif selected_task.entity_type == "MACHINE":
-                                # Crear Log
-                                log_data = form_data['machine_log']
+                                # Extraer datos del log desde form_data
+                                log_data = form_data.get('machine_log')
+                                if not log_data:
+                                    st.error("❌ No se recibieron datos del formulario de maquinaria")
+                                    return
+                                
+                                # Registrar el log usando MachineryService
                                 container.machinery_service.register_log(log_data)
                                 
                                 st.success("✅ Parte Diario registrado exitosamente")
-                                st.info(f"🚜 Máquina #{log_data['machine_id']} - Horas trabajadas: {log_data['end_hourmeter'] - log_data['start_hourmeter']:.1f}")
+                                st.info(f"🚜 Máquina #{log_data['machine_id']} - Horas trabajadas: {log_data['hours_worked']:.1f}")
                                 st.balloons()
                                 
                                 # Limpiar selección y recargar
@@ -166,7 +162,3 @@ def render_inbox_view():
         else:
             st.warning(f"⚠️ No se encontró formulario para: {selected_task.form_type}")
             st.caption("Este tipo de tarea aún no está implementado.")
-
-if __name__ == "__main__":
-    render_inbox_view()
-

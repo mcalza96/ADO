@@ -3,9 +3,7 @@ from ui.auth.login import login_page
 from ui.config_view import config_page
 from ui.requests_view import requests_page
 from ui.planning_view import planning_page
-from ui.operations.operations_view import operations_page
-from ui.operations.dispatch_view import dispatch_view
-from ui.operations.reception_view import reception_view
+from ui.inbox_view import inbox_page
 from ui.disposal.operations import disposal_operations_page
 from ui.treatment.operations import treatment_operations_page
 from ui.operations.dashboard_view import dashboard_page
@@ -92,66 +90,39 @@ def main():
             st.write(f"User: **{user.username}** ({user.role})")
             st.divider()
             
-            # Main Module Selection
-            module = st.selectbox(
-                "Módulo",
-                ["Dashboard", "Reportes", "Portal Clientes", "Transporte", "Disposición", "Tratamiento", "Configuración"]
-            )
+            # Nuevo Menú Simplificado
+            menu_options = ["Mi Bandeja (Inbox)", "Dashboard", "Reportes", "Configuración"]
+            selection = st.radio("Navegación", menu_options)
             
             st.divider()
-            
-            # Sub-navigation for Transporte
-            sub_menu = None
-            if module == "Transporte":
-                sub_menu = st.radio(
-                    "Gestión de Transporte",
-                    ["Planificación", "Despacho", "Recepción", "Operaciones (Legacy)"]
-                )
-            
-            # Sub-navigation for Reportes
-            report_menu = None
-            if module == "Reportes":
-                report_menu = st.radio(
-                    "Vistas de Inteligencia",
-                    ["Torre de Control (Logística)", "Drill-Down Agronómico", "Vista Cliente (Simulada)"]
-                )
             
             if st.button("Logout"):
                 st.session_state['user'] = None
                 st.rerun()
 
-        # Main Content Area
-        if module == "Dashboard":
+        # Router Principal
+        if selection == "Mi Bandeja (Inbox)":
+            # Pasamos el usuario real de la sesión
+            inbox_page(user_role=user.role, user_id=user.id)
+            
+        elif selection == "Dashboard":
             dashboard_page(dashboard_service)
             
-        elif module == "Reportes":
+        elif selection == "Reportes":
+            # Sub-navigation for Reportes
+            report_menu = st.sidebar.radio(
+                "Vistas de Inteligencia",
+                ["Torre de Control (Logística)", "Drill-Down Agronómico", "Vista Cliente (Simulada)"]
+            )
+            
             if report_menu == "Torre de Control (Logística)":
                 logistics_dashboard_page(reporting_service)
             elif report_menu == "Drill-Down Agronómico":
                 agronomy_dashboard_page(reporting_service, location_service)
             elif report_menu == "Vista Cliente (Simulada)":
                 client_portal_page(reporting_service)
-
-        elif module == "Portal Clientes":
-            requests_page(client_service, facility_service, location_service, logistics_service, treatment_plant_service)
-            
-        elif module == "Transporte":
-            if sub_menu == "Planificación":
-                planning_page(logistics_service, contractor_service, driver_service, vehicle_service, location_service, treatment_plant_service)
-            elif sub_menu == "Despacho":
-                dispatch_view(vehicle_service, dispatch_service, location_service, treatment_plant_service)
-            elif sub_menu == "Recepción":
-                reception_view(reception_service, treatment_plant_service)
-            elif sub_menu == "Operaciones (Legacy)":
-                operations_page(logistics_service, treatment_service, master_disposal_service, container_service)
                 
-        elif module == "Disposición":
-            disposal_operations_page(disposal_service, location_service, driver_service, treatment_plant_service, site_prep_service)
-            
-        elif module == "Tratamiento":
-            treatment_operations_page(treatment_plant_service, treatment_reception_service, batch_service, container_service, treatment_batch_service, logistics_service)
-            
-        elif module == "Configuración":
+        elif selection == "Configuración":
             config_page(
                 client_service=client_service,
                 facility_service=facility_service,

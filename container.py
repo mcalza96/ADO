@@ -44,12 +44,14 @@ from domain.disposal.services.disposal_master_service import DisposalService as 
 from domain.processing.services.treatment_master_service import TreatmentService
 from services.reporting.reporting_service import ReportingService
 from services.operations.dashboard_service import DashboardService
+from services.ui.task_resolver import TaskResolver
 
 # Event Bus
 from services.common.event_bus import EventBus, EventTypes
 
 # Machinery & Field Reception
 from domain.agronomy.services.machinery_service import MachineryService
+from domain.agronomy.repositories.machine_log_repository import MachineLogRepository
 from domain.agronomy.services.field_reception_handler import FieldReceptionHandler
 
 # Satellite Modules (Phase 3)
@@ -101,6 +103,7 @@ def get_container() -> SimpleNamespace:
     load_repo = LoadRepository(db_manager)
     batch_repo = BatchRepository(db_manager)
     reporting_repo = ReportingRepository(db_manager)
+    machine_log_repo = MachineLogRepository(db_manager)
     
     # Initialize Services with dependency injection
     location_service = LocationService(site_repo, plot_repo)
@@ -185,6 +188,9 @@ def get_container() -> SimpleNamespace:
     
     # Auth Service
     auth_service = AuthService(user_repo)
+
+    # Task Resolver (UI Service)
+    task_resolver = TaskResolver(load_repo, machine_log_repo)
     
     # Return a simple container object with services as attributes
     return SimpleNamespace(
@@ -217,4 +223,5 @@ def get_container() -> SimpleNamespace:
 
         agronomy_service=agronomy_service,
         machinery_service=machinery_service,  # New service
+        task_resolver=task_resolver,
     )
