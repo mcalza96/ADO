@@ -2,7 +2,6 @@ from typing import List, Optional
 import streamlit as st
 from models.masters.location import Site, Plot
 from database.repository import BaseRepository
-from models.masters.location import Site, Plot
 
 class LocationService:
     """
@@ -61,7 +60,7 @@ class LocationService:
         return self.plot_repo.update(plot)
     
     def get_plots_by_site(self, site_id: int) -> List[Plot]:
-        return self.plot_repo.get_by_site_id(site_id)
+        return self.plot_repo.get_all_filtered(site_id=site_id, is_active=1)
 
     def _validate_plot(self, plot: Plot, is_update: bool = False):
         """
@@ -72,7 +71,7 @@ class LocationService:
             raise ValueError("El área de la parcela debe ser mayor a 0 acres.")
 
         # 2. Unicidad Local (Name unique within Site)
-        existing_plots = self.plot_repo.get_by_site_id(plot.site_id)
+        existing_plots = self.plot_repo.get_all_filtered(site_id=plot.site_id, is_active=1)
         for p in existing_plots:
             if p.name.lower() == plot.name.lower():
                 # If updating, allow same name if it's the same ID

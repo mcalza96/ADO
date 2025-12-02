@@ -1,7 +1,8 @@
 import streamlit as st
 from ui.masters import containers_view, transport_view, locations_view
-from ui.masters.clients_view import clients_page
-from ui.masters.treatment_plants_view import treatment_plants_page
+from ui.generic_master_view import GenericMasterView, FieldConfig
+from models.masters.client import Client
+from models.masters.treatment_plant import TreatmentPlant
 
 
 def config_page(
@@ -50,13 +51,34 @@ def config_page(
         ])
         
         with sub_tab_clients:
-            # Call existing clients_page - need to refactor later to use render pattern
-            # For now, passing treatment_plant_service for backward compatibility
-            clients_page(client_service, location_service, treatment_plant_service)
+            # Use GenericMasterView for Clients
+            GenericMasterView(
+                service=client_service,
+                model_class=Client,
+                title="Clientes (Generadores)",
+                display_columns=["name", "rut", "contact_name", "contact_email"],
+                form_config={
+                    "name": FieldConfig(label="Nombre Empresa", required=True),
+                    "rut": FieldConfig(label="RUT"),
+                    "contact_name": FieldConfig(label="Nombre Contacto"),
+                    "contact_email": FieldConfig(label="Email Contacto"),
+                    "address": FieldConfig(label="Dirección", widget="text_area")
+                }
+            ).render()
         
         with sub_tab_plants:
-            # Call existing treatment_plants_page
-            treatment_plants_page(treatment_plant_service)
+            # Use GenericMasterView for Treatment Plants
+            GenericMasterView(
+                service=treatment_plant_service,
+                model_class=TreatmentPlant,
+                title="Plantas de Tratamiento",
+                display_columns=["name", "address", "state_permit_number"],
+                form_config={
+                    "name": FieldConfig(label="Nombre de Planta", required=True),
+                    "address": FieldConfig(label="Dirección"),
+                    "state_permit_number": FieldConfig(label="Nº Permiso Sanitario")
+                }
+            ).render()
     
     # ==========================================
     # TAB 2: TRANSPORTE
