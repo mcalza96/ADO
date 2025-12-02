@@ -1,7 +1,7 @@
 import streamlit as st
-from models.masters.transport import Contractor
-from models.masters.vehicle import Vehicle
-from models.masters.driver import Driver
+from domain.logistics.entities.contractor import Contractor
+from domain.logistics.entities.vehicle import Vehicle
+from domain.logistics.entities.driver import Driver
 from ui.generic_master_view import GenericMasterView, FieldConfig
 
 def render(driver_service, vehicle_service, contractor_service):

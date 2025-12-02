@@ -1,7 +1,7 @@
 import streamlit as st
 from container import get_container
-from models.masters.treatment_plant import TreatmentPlant
-from models.masters.treatment import Batch, LabResult
+from domain.processing.entities.treatment_plant import TreatmentPlant
+from domain.processing.entities.treatment_type import Batch, LabResult
 import datetime
 
 def treatment_page(treatment_plant_service=None):

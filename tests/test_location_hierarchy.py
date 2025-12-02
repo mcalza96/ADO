@@ -7,10 +7,10 @@ import sqlite3
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from database.db_manager import DatabaseManager
-from services.masters.location_service import LocationService
+from domain.disposal.services.location_service import LocationService
 from repositories.site_repository import SiteRepository
 from repositories.plot_repository import PlotRepository
-from models.masters.location import Site, Plot
+from domain.shared.entities.location import Site, Plot
 
 TEST_DB_PATH = "tests/test_biosolids.db"
 

@@ -1,8 +1,8 @@
 from typing import Dict, Optional
 from database.db_manager import DatabaseManager
-from services.base_service import BaseService
+from domain.shared.base_service import BaseService
 from infrastructure.reporting.pdf_manifest_generator import PdfManifestGenerator
-from models.operations.load import Load
+from domain.logistics.entities.load import Load
 
 class DashboardService(BaseService):
     """Service for dashboard operations and statistics."""

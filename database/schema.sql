@@ -200,6 +200,7 @@ CREATE TABLE IF NOT EXISTS applications (
     nitrogen_load_applied REAL,
     batch_source_ids TEXT, -- Comma separated IDs or JSON of source batches
     notes TEXT,
+    attributes TEXT DEFAULT '{}', -- Flexible JSONB-like storage for variable data (humedad_suelo, velocidad_viento, etc.)
     FOREIGN KEY (plot_id) REFERENCES plots(id) ON DELETE CASCADE
 );
 
@@ -236,6 +237,7 @@ CREATE TABLE IF NOT EXISTS loads (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     created_by_user_id INTEGER,
+    attributes TEXT DEFAULT '{}', -- Flexible JSONB-like storage for variable data (ph_inicial, temperatura_llegada, odometro, etc.)
     
     FOREIGN KEY (origin_facility_id) REFERENCES facilities(id),
     FOREIGN KEY (contractor_id) REFERENCES contractors(id),

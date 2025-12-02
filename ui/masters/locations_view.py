@@ -1,5 +1,5 @@
 import streamlit as st
-from models.masters.location import Site, Plot
+from domain.shared.entities.location import Site, Plot
 
 
 def render(location_service):

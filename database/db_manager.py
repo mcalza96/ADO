@@ -19,6 +19,7 @@ class DatabaseManager:
             db_path (str): Path to the SQLite database file.
         """
         self.db_path = db_path
+        print(f"🔌 DatabaseManager connecting to: {os.path.abspath(self.db_path)}")
         self.connection: Optional[sqlite3.Connection] = None
         self._transaction_depth = 0
 

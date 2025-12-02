@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 from repositories.reporting_repository import ReportingRepository
-from domain.compliance.constants import MAX_N_PER_HA
+from domain.shared.compliance_constants import MAX_N_PER_HA
 
 class ReportingService:
     """

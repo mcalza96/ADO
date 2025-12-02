@@ -1,9 +1,9 @@
 import streamlit as st
 from ui.masters import containers_view, transport_view, locations_view
 from ui.generic_master_view import GenericMasterView, FieldConfig
-from models.masters.client import Client
-from models.masters.treatment_plant import TreatmentPlant
-from models.masters.facility import Facility
+from domain.shared.entities.client import Client
+from domain.processing.entities.treatment_plant import TreatmentPlant
+from domain.processing.entities.facility import Facility
 
 
 def config_page(

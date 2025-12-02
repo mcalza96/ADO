@@ -1,4 +1,4 @@
-from domain.exceptions import LogisticsException
+from domain.shared.exceptions import LogisticsException
 
 class LogisticsRules:
     """

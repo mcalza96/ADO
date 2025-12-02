@@ -1,5 +1,5 @@
 import streamlit as st
-from models.masters.container import Container
+from domain.logistics.entities.container import Container
 
 
 def render(container_service, contractor_service):

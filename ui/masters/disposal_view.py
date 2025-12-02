@@ -1,7 +1,7 @@
 import streamlit as st
 from container import get_container
-from models.masters.location import Site, Plot
-from models.masters.disposal import SoilSample
+from domain.shared.entities.location import Site, Plot
+from domain.disposal.entities.disposal_method import SoilSample
 import datetime
 
 

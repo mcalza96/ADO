@@ -2,6 +2,7 @@ from typing import TypeVar, Generic, List, Optional, Type, Any
 from database.db_manager import DatabaseManager
 from dataclasses import fields
 import sqlite3
+import json
 
 T = TypeVar('T')
 
@@ -18,13 +19,31 @@ class BaseRepository(Generic[T]):
         self.model_cls = model_cls
         self.table_name = table_name
 
+
+
     def _map_row_to_model(self, row: dict) -> T:
         """
         Maps a database row dictionary to the model class, filtering out
         any keys that don't exist in the model's fields.
+        Handles JSON deserialization for dict/list fields.
         """
-        model_fields = {f.name for f in fields(self.model_cls)}
-        filtered_data = {k: v for k, v in row.items() if k in model_fields}
+        model_fields = {f.name: f for f in fields(self.model_cls)}
+        filtered_data = {}
+        
+        for k, v in row.items():
+            if k in model_fields:
+                # Check if we need to deserialize JSON
+                field_type = model_fields[k].type
+                # Simple heuristic: if value is str and field expects dict/list
+                # Note: This is a basic check, might need refinement for complex types
+                if isinstance(v, str) and ('Dict' in str(field_type) or 'List' in str(field_type) or field_type in (dict, list)):
+                    try:
+                        filtered_data[k] = json.loads(v)
+                    except json.JSONDecodeError:
+                        filtered_data[k] = v
+                else:
+                    filtered_data[k] = v
+                    
         return self.model_cls(**filtered_data)
 
     def get_all(self, active_only: bool = True, order_by: str = "id") -> List[T]:
@@ -102,7 +121,14 @@ class BaseRepository(Generic[T]):
         
         placeholders = ", ".join(["?"] * len(entity_fields))
         columns = ", ".join(entity_fields)
-        values = [getattr(entity, f) for f in entity_fields]
+        
+        values = []
+        for f in entity_fields:
+            val = getattr(entity, f)
+            if isinstance(val, (dict, list)):
+                values.append(json.dumps(val))
+            else:
+                values.append(val)
         
         query = f"INSERT INTO {self.table_name} ({columns}) VALUES ({placeholders})"
         
@@ -151,7 +177,14 @@ class BaseRepository(Generic[T]):
             set_parts.append("updated_at = CURRENT_TIMESTAMP")
         
         set_clause = ", ".join(set_parts)
-        values = [getattr(entity, f) for f in entity_fields]
+        
+        values = []
+        for f in entity_fields:
+            val = getattr(entity, f)
+            if isinstance(val, (dict, list)):
+                values.append(json.dumps(val))
+            else:
+                values.append(val)
         values.append(entity.id)
         
         query = f"UPDATE {self.table_name} SET {set_clause} WHERE id = ?"

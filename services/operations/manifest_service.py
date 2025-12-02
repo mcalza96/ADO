@@ -1,14 +1,14 @@
 from typing import Dict, Any, Optional
 from datetime import datetime
 from database.db_manager import DatabaseManager
-from repositories.load_repository import LoadRepository
-from repositories.load_repository import LoadRepository
+from domain.logistics.repositories.load_repository import LoadRepository
+from domain.logistics.repositories.load_repository import LoadRepository
 from database.repository import BaseRepository
-from models.masters.location import Site, Plot
-from models.masters.treatment_plant import TreatmentPlant
-from models.masters.driver import Driver
-from models.masters.vehicle import Vehicle
-from models.operations.load import Load
+from domain.shared.entities.location import Site, Plot
+from domain.processing.entities.treatment_plant import TreatmentPlant
+from domain.logistics.entities.driver import Driver
+from domain.logistics.entities.vehicle import Vehicle
+from domain.logistics.entities.load import Load
 from infrastructure.reporting.pdf_manifest_generator import PdfManifestGenerator
 
 class ManifestService:

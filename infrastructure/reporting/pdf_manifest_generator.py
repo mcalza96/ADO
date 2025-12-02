@@ -1,6 +1,6 @@
 from fpdf import FPDF
-from domain.interfaces.manifest_generator import ManifestGenerator
-from models.operations.load import Load
+from domain.shared.interfaces.manifest_generator import ManifestGenerator
+from domain.logistics.entities.load import Load
 import io
 
 class PdfManifestGenerator(ManifestGenerator):
