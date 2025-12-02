@@ -1,12 +1,12 @@
 from typing import Optional
 from services.base_service import BaseService
-from repositories.user_repository import UserRepository
+from database.repository import BaseRepository
 from models.auth.user import User
 import hashlib
 
 class AuthService(BaseService):
-    def __init__(self, user_repository: UserRepository):
-        self.user_repository = user_repository
+    def __init__(self, user_repo: BaseRepository[User]):
+        self.user_repository = user_repo
 
     def create_user(self, user: User) -> User:
         """

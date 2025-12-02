@@ -1,79 +1,36 @@
 import streamlit as st
 import pandas as pd
 import datetime
-from container import get_container
-from database.db_manager import DatabaseManager
-from services.operations.logistics_service import LogisticsService
-from services.compliance.compliance_service import ComplianceService
-from repositories.site_repository import SiteRepository
-from repositories.load_repository import LoadRepository
-from repositories.batch_repository import BatchRepository
-from repositories.nitrogen_application_repository import NitrogenApplicationRepository
-from services.masters.location_service import LocationService
-from services.masters.treatment_plant_service import TreatmentPlantService
 
-def planning_page(treatment_plant_service=None):
+def planning_page(logistics_service, contractor_service, driver_service, vehicle_service, location_service, treatment_plant_service):
     st.title("🗓️ Tablero de Planificación (Control Tower)")
-
-    # --- Dependency Injection via Container ---
-    services = get_container()
-    
-    logistics_service = services.logistics_service
-    contractor_service = services.contractor_service
-    driver_service = services.driver_service
-    vehicle_service = services.vehicle_service
-    location_service = services.location_service
-    # Use passed service or get from container
-    treatment_plant_service = treatment_plant_service or services.treatment_plant_service
 
     # --- Tabs ---
     tab_backlog, tab_scheduled = st.tabs(["🔴 Por Planificar (Backlog)", "✅ Planificadas"])
 
     # --- Tab 1: Backlog ---
     with tab_backlog:
-        # Fetch Requested Loads
-        # Assuming get_by_status returns a list of Load objects
-        requested_loads = logistics_service.load_repo.get_by_status('Requested')
+        # Fetch Requested Loads (Optimized)
+        requested_loads = logistics_service.get_planning_loads('Requested')
 
         if not requested_loads:
             st.info("No hay solicitudes pendientes de planificación.")
         else:
-            # Prepare Data for Grid
-            data = []
-            for load in requested_loads:
-                # Resolve Origin Name
-                if load.origin_facility_id:
-                    fac = treatment_plant_service.get_by_id(load.origin_facility_id)
-                    origin = fac.name if fac else f"Facility {load.origin_facility_id}"
-                elif load.origin_treatment_plant_id:
-                    plant = treatment_plant_service.get_plant_by_id(load.origin_treatment_plant_id)
-                    origin = plant.name if plant else f"Plant {load.origin_treatment_plant_id}"
-                else:
-                    origin = "Unknown"
-
-                data.append({
-                    "ID": load.id,
-                    "Fecha Solicitud": load.requested_date,
-                    "Origen": origin,
-                    "Volumen Est.": 20.0, # Placeholder or derived
-                    "Estado": load.status
-                })
+            df = pd.DataFrame(requested_loads)
             
-            df = pd.DataFrame(data)
-
-            # Configure Columns
-            column_config = {
-                "ID": st.column_config.NumberColumn("ID", width="small"),
-                "Fecha Solicitud": st.column_config.DateColumn("Fecha Solicitud", format="DD/MM/YYYY"),
-                "Volumen Est.": st.column_config.NumberColumn("Volumen (tons)", format="%.1f"),
-            }
-
+            # Rename for display
+            df = df.rename(columns={
+                'id': 'ID',
+                'created_at': 'Fecha Solicitud', # Using created_at as proxy for requested_date if not present
+                'origin_facility_name': 'Origen',
+                'status': 'Estado'
+            })
+            
             # Interactive Grid
             st.markdown("### Selecciona cargas para asignar")
             event = st.dataframe(
-                df,
+                df[['ID', 'Fecha Solicitud', 'Origen', 'Estado']],
                 use_container_width=True,
-                column_config=column_config,
                 hide_index=True,
                 on_select="rerun",
                 selection_mode="multi-row",
@@ -85,8 +42,6 @@ def planning_page(treatment_plant_service=None):
             # --- Assignment Form (Sidebar) ---
             if selected_rows:
                 selected_indices = selected_rows
-                # Get the actual IDs from the dataframe using the selected indices
-                # selected_rows returns a list of integer indices corresponding to the displayed dataframe
                 selected_ids = df.iloc[selected_indices]["ID"].tolist()
                 
                 st.sidebar.header(f"Asignando {len(selected_ids)} Cargas")
@@ -114,22 +69,15 @@ def planning_page(treatment_plant_service=None):
                         v_opts = {f"{v.license_plate} ({v.type})": v.id for v in vehicles}
                         sel_v = st.selectbox("Vehículo", list(v_opts.keys()))
                         if sel_v: vehicle_id = v_opts[sel_v]
-
-                    st.subheader("Programación")
-                    scheduled_date = st.date_input("Fecha Programada", value=datetime.date.today())
-                    scheduled_time = st.time_input("Hora", value=datetime.time(8, 0))
                     
                     st.subheader("Destino")
-                    # Simplified destination selection for bulk assignment
-                    # Ideally this should be smart based on origin, but for bulk we might assume same destination
-                    # or force user to pick one valid for all.
-                    dest_type = st.radio("Tipo Destino", ["Predio", "Planta"], horizontal=True)
+                    dest_type = st.radio("Tipo Destino", ["Campo (Sitio)", "Planta (Tratamiento)"])
                     
                     site_id = None
                     plant_id = None
                     
-                    if dest_type == "Predio":
-                        sites = location_service.get_all_sites()
+                    if dest_type == "Campo (Sitio)":
+                        sites = location_service.get_all_sites(active_only=True)
                         s_opts = {s.name: s.id for s in sites}
                         sel_s = st.selectbox("Predio Destino", list(s_opts.keys()))
                         if sel_s: site_id = s_opts[sel_s]
@@ -138,88 +86,54 @@ def planning_page(treatment_plant_service=None):
                         p_opts = {p.name: p.id for p in plants}
                         sel_p = st.selectbox("Planta Destino", list(p_opts.keys()))
                         if sel_p: plant_id = p_opts[sel_p]
-
-                    container_qty = st.number_input("Contenedores (por carga)", min_value=1, value=1)
-
-                    submitted = st.form_submit_button("Confirmar Asignación")
+                        
+                    scheduled_date = st.date_input("Fecha Programada", datetime.date.today())
                     
-                    if submitted:
-                        if not driver_id or not vehicle_id or (not site_id and not plant_id):
-                            st.error("Por favor complete todos los campos requeridos.")
-                        else:
-                            success_count = 0
-                            errors = []
-                            
-                            full_date = datetime.datetime.combine(scheduled_date, scheduled_time)
-                            
-                            progress_bar = st.progress(0)
-                            
-                            for idx, load_id in enumerate(selected_ids):
-                                try:
-                                    logistics_service.schedule_load(
-                                        load_id=load_id,
-                                        driver_id=driver_id,
-                                        vehicle_id=vehicle_id,
-                                        scheduled_date=full_date,
-                                        site_id=site_id,
-                                        treatment_plant_id=plant_id,
-                                        container_quantity=container_qty
-                                    )
-                                    success_count += 1
-                                except Exception as e:
-                                    errors.append(f"Load {load_id}: {str(e)}")
-                                
-                                progress_bar.progress((idx + 1) / len(selected_ids))
-                            
-                            if success_count > 0:
-                                st.success(f"Se asignaron {success_count} cargas exitosamente.")
-                            
-                            if errors:
-                                st.error(f"Hubo {len(errors)} errores:")
-                                for err in errors:
-                                    st.write(err)
-                                    
-                            if success_count == len(selected_ids):
-                                st.rerun()
-
-            else:
-                st.info("👆 Selecciona una o más cargas en la tabla para habilitar el panel de asignación.")
+                    if st.form_submit_button("💾 Confirmar Asignación"):
+                        success_count = 0
+                        for load_id in selected_ids:
+                            try:
+                                logistics_service.schedule_load(
+                                    load_id=load_id,
+                                    driver_id=driver_id,
+                                    vehicle_id=vehicle_id,
+                                    scheduled_date=scheduled_date,
+                                    site_id=site_id,
+                                    treatment_plant_id=plant_id
+                                )
+                                success_count += 1
+                            except Exception as e:
+                                st.error(f"Error asignando carga {load_id}: {e}")
+                        
+                        if success_count > 0:
+                            st.success(f"Se programaron {success_count} cargas exitosamente.")
+                            st.rerun()
 
     # --- Tab 2: Scheduled ---
     with tab_scheduled:
-        scheduled_loads = logistics_service.load_repo.get_by_status('Scheduled')
+        # Fetch Scheduled Loads (Optimized)
+        scheduled_loads = logistics_service.get_planning_loads('Scheduled')
+        
         if not scheduled_loads:
             st.info("No hay cargas programadas.")
         else:
-            s_data = []
-            for load in scheduled_loads:
-                # Resolve Origin
-                if load.origin_facility_id:
-                    fac = treatment_plant_service.get_by_id(load.origin_facility_id)
-                    origin = fac.name if fac else str(load.origin_facility_id)
-                else:
-                    plant = treatment_plant_service.get_plant_by_id(load.origin_treatment_plant_id)
-                    origin = plant.name if plant else str(load.origin_treatment_plant_id)
-                
-                # Resolve Driver/Vehicle
-                driver = driver_service.get_driver_by_id(load.driver_id)
-                vehicle = vehicle_service.get_vehicle_by_id(load.vehicle_id)
-                
-                s_data.append({
-                    "ID": load.id,
-                    "Fecha Programada": load.scheduled_date,
-                    "Origen": origin,
-                    "Conductor": driver.name if driver else "N/A",
-                    "Vehículo": vehicle.license_plate if vehicle else "N/A",
-                    "Destino ID": load.destination_site_id if load.destination_site_id else load.destination_treatment_plant_id
-                })
+            df_sched = pd.DataFrame(scheduled_loads)
             
-            df_scheduled = pd.DataFrame(s_data)
+            # Rename for display
+            df_sched = df_sched.rename(columns={
+                'id': 'ID',
+                'scheduled_date': 'Fecha Programada',
+                'origin_facility_name': 'Origen',
+                'contractor_name': 'Transportista',
+                'vehicle_plate': 'Patente',
+                'driver_name': 'Conductor',
+                'status': 'Estado'
+            })
+            
+            # Handle destination
+            df_sched['Destino'] = df_sched.apply(lambda x: x['destination_site_name'] if pd.notna(x['destination_site_name']) else x['destination_plant_name'], axis=1)
+            
             st.dataframe(
-                df_scheduled,
-                use_container_width=True,
-                column_config={
-                    "Fecha Programada": st.column_config.DatetimeColumn("Fecha Programada", format="DD/MM/YYYY HH:mm"),
-                },
-                hide_index=True
+                df_sched[['ID', 'Fecha Programada', 'Origen', 'Destino', 'Transportista', 'Patente', 'Conductor', 'Estado']],
+                use_container_width=True
             )

@@ -3,13 +3,13 @@ from datetime import datetime
 from database.db_manager import DatabaseManager
 from database.repository import BaseRepository
 from models.operations.treatment_batch import TreatmentBatch
-from services.masters.container_service import ContainerService
+from models.masters.container import Container
 
 class TreatmentBatchService:
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
         self.repo = BaseRepository(db_manager, TreatmentBatch, "treatment_batches")
-        self.container_service = ContainerService(db_manager)
+        self.container_repo = BaseRepository(db_manager, Container, "containers")
 
     def create_batch(self, facility_id: int, container_id: int, fill_time: datetime, ph_0h: float, humidity: float) -> TreatmentBatch:
         batch = TreatmentBatch(
@@ -25,7 +25,11 @@ class TreatmentBatchService:
         saved_batch = self.repo.add(batch)
         
         # Update Container Status
-        self.container_service.update_status(container_id, 'IN_USE')
+        # Update Container Status
+        container = self.container_repo.get_by_id(container_id)
+        if container:
+            container.status = 'IN_USE'
+            self.container_repo.update(container)
         
         return saved_batch
 

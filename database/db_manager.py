@@ -32,12 +32,13 @@ class DatabaseManager:
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         
         if self.connection is None:
-            self.connection = sqlite3.connect(self.db_path)
+            self.connection = sqlite3.connect(self.db_path, check_same_thread=False)
             self.connection.row_factory = sqlite3.Row
             
             # Configure SQLite for integrity and concurrency
-            self.connection.execute("PRAGMA foreign_keys = ON;")
             self.connection.execute("PRAGMA journal_mode = WAL;")
+            self.connection.execute("PRAGMA synchronous = NORMAL;")
+            self.connection.execute("PRAGMA foreign_keys = ON;")
         
         self._transaction_depth += 1
         return self.connection

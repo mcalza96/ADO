@@ -3,7 +3,7 @@ from container import get_container
 from ui.styles import apply_industrial_style
 import datetime
 
-def reception_view(treatment_plant_service=None):
+def reception_view(reception_service, treatment_plant_service):
     """
     Vista de Recepción de Cargas (Sprint 2).
     Muestra cargas en tránsito y permite confirmar llegada con ajuste de peso.
@@ -12,10 +12,6 @@ def reception_view(treatment_plant_service=None):
     st.title("📦 Recepción de Cargas")
     
     # Use dependency injection container
-    services = get_container()
-    reception_service = services.reception_service
-    # Ensure treatment_plant_service is available if needed in future
-    treatment_plant_service = treatment_plant_service or services.treatment_plant_service
     
     st.markdown("### Cargas en Tránsito")
     

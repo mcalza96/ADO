@@ -3,13 +3,12 @@ import pandas as pd
 from datetime import datetime, timedelta
 from container import get_container
 
-def client_portal_page():
+def client_portal_page(reporting_service):
     st.header("Portal de Cliente")
     st.markdown("Bienvenido. Aquí puede revisar la trazabilidad completa de sus residuos.")
 
     # Initialize Service
-    services = get_container()
-    service = services.reporting_service
+    service = reporting_service
 
     # Filters
     col1, col2 = st.columns(2)

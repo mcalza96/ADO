@@ -1,14 +1,15 @@
 from typing import List, Optional
+import streamlit as st
 from models.masters.location import Site, Plot
-from repositories.site_repository import SiteRepository
-from repositories.plot_repository import PlotRepository
+from database.repository import BaseRepository
+from models.masters.location import Site, Plot
 
 class LocationService:
     """
     Service for managing Sites and Plots (Location/Agronomy Masters).
     """
     
-    def __init__(self, site_repo: SiteRepository, plot_repo: PlotRepository):
+    def __init__(self, site_repo: BaseRepository[Site], plot_repo: BaseRepository[Plot]):
         self.site_repo = site_repo
         self.plot_repo = plot_repo
 
@@ -17,29 +18,30 @@ class LocationService:
         Creates a new Site.
         """
         # Basic validation if needed
+        # Invalidate cache
+        st.cache_data.clear()
         return self.site_repo.add(site)
 
     def update_site(self, site: Site) -> Site:
         """
         Updates an existing Site.
         """
+        # Invalidate cache
+        st.cache_data.clear()
         return self.site_repo.update(site)
     
     def get_site(self, site_id: int, include_plots: bool = False) -> Optional[Site]:
         """
         Retrieves a site by ID.
         """
-        return self.site_repo.get_by_id(site_id) # include_plots handled in repo? No, repo has custom method.
-        # Wait, SiteRepository.get_by_id has include_plots param.
-        # BaseRepository.get_by_id does NOT.
-        # SiteRepository overrides it.
         return self.site_repo.get_by_id(site_id, include_plots=include_plots)
 
-    def get_all_sites(self, active_only: bool = False) -> List[Site]:
+    @st.cache_data(ttl=3600)
+    def get_all_sites(_self, active_only: bool = False) -> List[Site]:
         """
         Retrieves all sites, optionally filtering by active status.
         """
-        sites = self.site_repo.get_all_ordered()
+        sites = _self.site_repo.get_all_ordered()
         if active_only:
             return [s for s in sites if s.is_active]
         return sites

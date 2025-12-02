@@ -52,11 +52,11 @@ def config_page(
         with sub_tab_clients:
             # Call existing clients_page - need to refactor later to use render pattern
             # For now, passing treatment_plant_service for backward compatibility
-            clients_page(treatment_plant_service=treatment_plant_service)
+            clients_page(client_service, location_service, treatment_plant_service)
         
         with sub_tab_plants:
             # Call existing treatment_plants_page
-            treatment_plants_page(treatment_plant_service=treatment_plant_service)
+            treatment_plants_page(treatment_plant_service)
     
     # ==========================================
     # TAB 2: TRANSPORTE

@@ -4,7 +4,7 @@ from datetime import datetime
 from container import get_container
 from ui.styles import apply_industrial_style
 
-def dispatch_view(treatment_plant_service=None):
+def dispatch_view(vehicle_service, dispatch_service, location_service, treatment_plant_service):
     """
     Vista del Conductor "Mi Ruta".
     Flujo lineal: Scheduled -> Accepted -> InTransit -> Arrived -> Delivered.
@@ -13,11 +13,6 @@ def dispatch_view(treatment_plant_service=None):
     st.title("🚛 Mi Ruta")
     
     # Dependency Injection
-    services = get_container()
-    vehicle_service = services.vehicle_service
-    dispatch_service = services.dispatch_service
-    location_service = services.location_service
-    treatment_plant_service = treatment_plant_service or services.treatment_plant_service
     
     # --- 1. Selector de Vehículo ---
     # Load active vehicles

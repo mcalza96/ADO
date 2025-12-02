@@ -13,42 +13,35 @@ services directly. Instead, it should request ready-to-use services from this co
 import streamlit as st
 from types import SimpleNamespace
 from database.db_manager import DatabaseManager
-from repositories.site_repository import SiteRepository
-from repositories.plot_repository import PlotRepository
 from repositories.load_repository import LoadRepository
-from repositories.site_event_repository import SiteEventRepository
-from repositories.user_repository import UserRepository
 from repositories.batch_repository import BatchRepository
-from repositories.nitrogen_application_repository import NitrogenApplicationRepository
-from repositories.client_repository import ClientRepository
-from repositories.contractor_repository import ContractorRepository
-from repositories.driver_repository import DriverRepository
-from repositories.vehicle_repository import VehicleRepository
 from repositories.reporting_repository import ReportingRepository
+from database.repository import BaseRepository
+
+# Models for Generic Repositories
+from models.masters.location import Site, Plot
+from models.operations.site_event import SiteEvent
+from models.auth.user import User
+from models.agronomy.application import NitrogenApplication
+from models.masters.client import Client
+from models.masters.transport import Contractor
+from models.masters.driver import Driver
+from models.masters.vehicle import Vehicle
+from models.masters.treatment_plant import TreatmentPlant
+from models.masters.container import Container
 
 from services.masters.location_service import LocationService
-from services.operations.disposal_execution_service import DisposalExecutionService
-from services.operations.dispatch_service import DispatchService
+from services.operations.logistics_domain_service import LogisticsDomainService
+from services.operations.agronomy_domain_service import AgronomyDomainService
 from services.auth_service import AuthService
-
-
-from services.operations.site_preparation_service import SitePreparationService
 from services.operations.manifest_service import ManifestService
 from services.operations.batch_service import BatchService
 from services.compliance.compliance_service import ComplianceService
-from services.operations.nitrogen_application_service import NitrogenApplicationService
-from services.operations.reception_service import ReceptionService
-from services.operations.logistics_service import LogisticsService
 from services.operations.treatment_reception import TreatmentReceptionService
 from services.operations.treatment_batch_service import TreatmentBatchService
-from services.masters.client_service import ClientService
-from services.masters.treatment_plant_service import TreatmentPlantService
-from services.masters.container_service import ContainerService
+from services.generic_crud_service import GenericCrudService
 from services.masters.disposal_service import DisposalService as MasterDisposalService
 from services.masters.treatment_service import TreatmentService
-from services.masters.contractor_service import ContractorService
-from services.masters.driver_service import DriverService
-from services.masters.vehicle_service import VehicleService
 from services.reporting.reporting_service import ReportingService
 from services.operations.dashboard_service import DashboardService
 
@@ -77,17 +70,21 @@ def get_container() -> SimpleNamespace:
     db_manager = DatabaseManager()
     
     # Initialize Repositories
-    site_repo = SiteRepository(db_manager)
-    plot_repo = PlotRepository(db_manager)
+    # Initialize Repositories
+    # Generic Repositories
+    site_repo = BaseRepository(db_manager, Site, "sites")
+    plot_repo = BaseRepository(db_manager, Plot, "plots")
+    site_event_repo = BaseRepository(db_manager, SiteEvent, "site_events")
+    user_repo = BaseRepository(db_manager, User, "users")
+    application_repo = BaseRepository(db_manager, NitrogenApplication, "nitrogen_applications")
+    vehicle_repo = BaseRepository(db_manager, Vehicle, "vehicles")
+    client_repo = BaseRepository(db_manager, Client, "clients")
+    contractor_repo = BaseRepository(db_manager, Contractor, "contractors")
+    driver_repo = BaseRepository(db_manager, Driver, "drivers")
+    
+    # Specific Repositories (Custom SQL or Logic)
     load_repo = LoadRepository(db_manager)
-    site_event_repo = SiteEventRepository(db_manager)
-    user_repo = UserRepository(db_manager)
     batch_repo = BatchRepository(db_manager)
-    application_repo = NitrogenApplicationRepository(db_manager)
-    vehicle_repo = VehicleRepository(db_manager)
-    client_repo = ClientRepository(db_manager)
-    contractor_repo = ContractorRepository(db_manager)
-    driver_repo = DriverRepository(db_manager)
     reporting_repo = ReportingRepository(db_manager)
     
     # Initialize Services with dependency injection
@@ -99,32 +96,27 @@ def get_container() -> SimpleNamespace:
         site_repo, load_repo, batch_repo, application_repo
     )
     
-    # Validation and Nitrogen Services
-    nitrogen_app_service = NitrogenApplicationService(
-        application_repo, compliance_service
-    )
+    # Agronomy Domain Service
+    agronomy_service = AgronomyDomainService(db_manager, compliance_service)
     
-    # ManifestService instantiated with updated signature
+    # Manifest Service
     manifest_service = ManifestService(db_manager, batch_service, compliance_service)
-    site_prep_service = SitePreparationService(db_manager)
-    
-    disposal_service = DisposalExecutionService(db_manager)
-    auth_service = AuthService(user_repo)
-    
-    # DispatchService with all dependencies injected
-    dispatch_service = DispatchService(
+
+    # Logistics Domain Service
+    logistics_service = LogisticsDomainService(
         db_manager,
         batch_service,
         compliance_service,
-        nitrogen_app_service,
+        agronomy_service,
         manifest_service
     )
     
-    # ReceptionService for TTO-02/TTO-03 workflows
-    reception_service = ReceptionService(db_manager, batch_service)
-    
-    # LogisticsService for planning workflows
-    logistics_service = LogisticsService(db_manager, compliance_service)
+    # Aliases for backward compatibility (if needed during transition)
+    dispatch_service = logistics_service
+    reception_service = logistics_service
+    disposal_service = agronomy_service
+    site_prep_service = agronomy_service
+    nitrogen_app_service = agronomy_service
     
     # Treatment Reception Service
     treatment_reception_service = TreatmentReceptionService(db_manager)
@@ -133,12 +125,12 @@ def get_container() -> SimpleNamespace:
     treatment_batch_service = TreatmentBatchService(db_manager)
     
     # Master Services
-    client_service = ClientService(client_repo)
-    contractor_service = ContractorService(contractor_repo)
-    driver_service = DriverService(driver_repo, contractor_repo)
-    vehicle_service = VehicleService(vehicle_repo)
-    treatment_plant_service = TreatmentPlantService(db_manager)
-    container_service = ContainerService(db_manager)
+    client_service = GenericCrudService(client_repo)
+    contractor_service = GenericCrudService(contractor_repo)
+    driver_service = GenericCrudService(driver_repo)
+    vehicle_service = GenericCrudService(vehicle_repo)
+    treatment_plant_service = GenericCrudService(BaseRepository(db_manager, TreatmentPlant, "treatment_plants"))
+    container_service = GenericCrudService(BaseRepository(db_manager, Container, "containers"))
     master_disposal_service = MasterDisposalService(db_manager)
     treatment_service = TreatmentService(db_manager)
     
@@ -147,6 +139,9 @@ def get_container() -> SimpleNamespace:
     
     # Dashboard Service
     dashboard_service = DashboardService(db_manager)
+    
+    # Auth Service
+    auth_service = AuthService(user_repo)
     
     # Return a simple container object with services as attributes
     return SimpleNamespace(
@@ -173,5 +168,6 @@ def get_container() -> SimpleNamespace:
         dashboard_service=dashboard_service,
         compliance_service=compliance_service,
         nitrogen_app_service=nitrogen_app_service,
-        reporting_service=reporting_service
+        reporting_service=reporting_service,
+        agronomy_service=agronomy_service,
     )

@@ -2,14 +2,12 @@ import streamlit as st
 from container import get_container
 from ui.styles import apply_industrial_style
 
-def operations_page():
+def operations_page(logistics_service, treatment_service, master_disposal_service, container_service):
     apply_industrial_style()
     st.title("🚛 OPERACIONES - EJECUCIÓN")
     
-    services = get_container()
-    ops_service = services.logistics_service
-    treatment_service = services.treatment_service
-    disposal_service = services.master_disposal_service
+    ops_service = logistics_service
+    disposal_service = master_disposal_service
     
     # 1. Identify Driver/Load
     # In a real app, Driver logs in. Here, we select a Scheduled Load to "Claim" it.
@@ -47,7 +45,7 @@ def operations_page():
         
         if is_treatment_origin:
             st.info("🏭 Origen: Planta de Tratamiento - Seleccione Contenedores")
-            c_service = services.container_service
+            c_service = container_service
             # Get containers that are READY or MONITORING (Active) at this plant
             # Ideally we should filter by 'READY' only, but user said "available/ready"
             # Let's use get_ready_containers logic or similar.

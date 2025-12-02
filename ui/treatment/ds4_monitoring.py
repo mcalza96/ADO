@@ -2,17 +2,12 @@ import streamlit as st
 from datetime import datetime, timedelta
 from ui.styles import apply_industrial_style
 
-def ds4_monitoring_view(plant_id: int, services=None):
-    """DS4 Monitoring view. Can receive services or get them from container."""
-    if services is None:
-        from container import get_container
-        services = get_container()
+def ds4_monitoring_view(plant_id: int, container_service, treatment_batch_service, logistics_service):
+    """DS4 Monitoring view."""
         
     st.subheader("🧪 Monitoreo DS4 (Estabilización)")
     
-    container_service = services.container_service
-    treatment_batch_service = services.treatment_batch_service
-    ops_service = services.logistics_service
+    ops_service = logistics_service
     
     tab1, tab2, tab3 = st.tabs(["1. Llenado (Inicio)", "2. Monitoreo (pH)", "3. Despacho (Salida)"])
     

@@ -2,11 +2,12 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 from database.db_manager import DatabaseManager
 from repositories.load_repository import LoadRepository
-from repositories.site_repository import SiteRepository
-from repositories.plot_repository import PlotRepository
-from repositories.treatment_plant_repository import TreatmentPlantRepository
-from repositories.driver_repository import DriverRepository
-from repositories.vehicle_repository import VehicleRepository
+from repositories.load_repository import LoadRepository
+from database.repository import BaseRepository
+from models.masters.location import Site, Plot
+from models.masters.treatment_plant import TreatmentPlant
+from models.masters.driver import Driver
+from models.masters.vehicle import Vehicle
 from models.operations.load import Load
 from infrastructure.reporting.pdf_manifest_generator import PdfManifestGenerator
 
@@ -22,11 +23,12 @@ class ManifestService:
         self.compliance_service = compliance_service
         
         self.load_repo = LoadRepository(db_manager)
-        self.site_repo = SiteRepository(db_manager)
-        self.plot_repo = PlotRepository(db_manager)
-        self.facility_repo = TreatmentPlantRepository(db_manager)
-        self.driver_repo = DriverRepository(db_manager)
-        self.vehicle_repo = VehicleRepository(db_manager)
+        self.load_repo = LoadRepository(db_manager)
+        self.site_repo = BaseRepository(db_manager, Site, "sites")
+        self.plot_repo = BaseRepository(db_manager, Plot, "plots")
+        self.facility_repo = BaseRepository(db_manager, TreatmentPlant, "treatment_plants")
+        self.driver_repo = BaseRepository(db_manager, Driver, "drivers")
+        self.vehicle_repo = BaseRepository(db_manager, Vehicle, "vehicles")
         
         self.pdf_generator = PdfManifestGenerator()
 

@@ -130,9 +130,49 @@ class LoadRepository(BaseRepository[Load]):
         with self.db_manager as conn:
             cursor = conn.cursor()
             cursor.execute(
-                f"SELECT * FROM {self.table_name} WHERE status = ? ORDER BY created_at DESC LIMIT ?", 
+                f"SELECT * FROM {self.table_name} WHERE status = ? ORDER BY created_at DESC LIMIT ?",
                 (status, limit)
             )
             rows = cursor.fetchall()
             return [self._map_row_to_model(dict(row)) for row in rows]
 
+    def get_loads_with_details(self, status: Optional[str] = None, limit: int = 100) -> List[dict]:
+        """
+        Optimized query to fetch loads with related entity names (N+1 solution).
+        Returns a list of dictionaries ready for UI display.
+        """
+        query = """
+            SELECT 
+                l.id, 
+                l.manifest_code, 
+                l.status,
+                l.scheduled_date,
+                l.created_at,
+                c.name as contractor_name,
+                v.license_plate as vehicle_plate,
+                d.name as driver_name,
+                f.name as origin_facility_name,
+                s.name as destination_site_name,
+                tp.name as destination_plant_name
+            FROM loads l
+            LEFT JOIN contractors c ON l.contractor_id = c.id
+            LEFT JOIN vehicles v ON l.vehicle_id = v.id
+            LEFT JOIN drivers d ON l.driver_id = d.id
+            LEFT JOIN facilities f ON l.origin_facility_id = f.id
+            LEFT JOIN sites s ON l.destination_site_id = s.id
+            LEFT JOIN facilities tp ON l.destination_treatment_plant_id = tp.id
+            WHERE 1=1
+        """
+        params = []
+        if status:
+            query += " AND l.status = ?"
+            params.append(status)
+            
+        query += " ORDER BY l.created_at DESC LIMIT ?"
+        params.append(limit)
+        
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, tuple(params))
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]

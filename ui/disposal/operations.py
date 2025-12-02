@@ -2,19 +2,12 @@ import streamlit as st
 import datetime
 from container import get_container
 
-def disposal_operations_page():
+def disposal_operations_page(disposal_service, location_service, driver_service, treatment_plant_service, site_prep_service):
     st.title("🏔️ Operaciones de Disposición")
-    
-    # Get services from dependency injection container
-    try:
-        services = get_container()
-    except Exception as e:
-        st.error(f"Error al inicializar servicios: {e}")
-        return
     
     # 1. Context Selection (Site)
     try:
-        sites = services.location_service.get_all_sites()
+        sites = location_service.get_all_sites()
     except Exception as e:
         st.error(f"Error al cargar predios: {e}")
         return
@@ -52,8 +45,7 @@ def disposal_operations_page():
         
         # Get loads with status='Dispatched' (En Ruta)
         try:
-            from repositories.load_repository import LoadRepository
-            load_repo = LoadRepository(services.db_manager)
+            load_repo = disposal_service.load_repo
             dispatched_loads = load_repo.get_by_status('Dispatched')
             
             # Filter by destination site
@@ -105,7 +97,7 @@ def disposal_operations_page():
                         
                         if submitted:
                             try:
-                                services.disposal_service.register_arrival(
+                                disposal_service.register_arrival(
                                     load_id=load.id,
                                     weight=weight_arrival,
                                     observation=observation if observation else None
@@ -133,7 +125,7 @@ def disposal_operations_page():
         # Get loads ready for disposal (Status: Delivered)
         try:
             # Use the service method which now fetches 'Delivered' loads
-            arrived_loads = services.disposal_service.get_pending_disposal_loads(site_id)
+            arrived_loads = disposal_service.get_pending_disposal_loads(site_id)
             
         except Exception as e:
             st.error(f"Error al cargar cargas para disposición: {e}")
@@ -210,7 +202,7 @@ def disposal_operations_page():
                             try:
                                 # Combine coordinates and method for now
                                 final_coords = f"{gps_coords} | {method}"
-                                services.disposal_service.execute_disposal(
+                                disposal_service.execute_disposal(
                                     load_id=load.id,
                                     coordinates=final_coords
                                 )
@@ -244,7 +236,7 @@ def disposal_operations_page():
             
             if st.form_submit_button("📝 Registrar Labor"):
                 try:
-                    services.site_prep_service.register_site_event(
+                    site_prep_service.register_site_event(
                         site_id, 
                         evt_type, 
                         datetime.datetime.combine(evt_date, datetime.time(0, 0)), 

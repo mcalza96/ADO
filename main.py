@@ -72,6 +72,18 @@ def main():
         driver_service = services.driver_service
         vehicle_service = services.vehicle_service
         auth_service = services.auth_service
+        logistics_service = services.logistics_service
+        dispatch_service = services.dispatch_service
+        reporting_service = services.reporting_service
+        treatment_service = services.treatment_service
+        batch_service = services.batch_service
+        treatment_reception_service = services.treatment_reception_service
+        master_disposal_service = services.master_disposal_service
+        disposal_service = services.disposal_service
+        treatment_batch_service = services.treatment_batch_service
+        dashboard_service = services.dashboard_service
+        site_prep_service = services.site_prep_service
+        reception_service = services.reception_service
         
         # Sidebar Navigation
         with st.sidebar:
@@ -109,34 +121,34 @@ def main():
 
         # Main Content Area
         if module == "Dashboard":
-            dashboard_page()
+            dashboard_page(dashboard_service)
             
         elif module == "Reportes":
             if report_menu == "Torre de Control (Logística)":
-                logistics_dashboard_page()
+                logistics_dashboard_page(reporting_service)
             elif report_menu == "Drill-Down Agronómico":
-                agronomy_dashboard_page()
+                agronomy_dashboard_page(reporting_service, location_service)
             elif report_menu == "Vista Cliente (Simulada)":
-                client_portal_page()
+                client_portal_page(reporting_service)
 
         elif module == "Portal Clientes":
-            requests_page(treatment_plant_service=treatment_plant_service)
+            requests_page(client_service, location_service, logistics_service, treatment_plant_service)
             
         elif module == "Transporte":
             if sub_menu == "Planificación":
-                planning_page(treatment_plant_service=treatment_plant_service)
+                planning_page(logistics_service, contractor_service, driver_service, vehicle_service, location_service, treatment_plant_service)
             elif sub_menu == "Despacho":
-                dispatch_view(treatment_plant_service=treatment_plant_service)
+                dispatch_view(vehicle_service, dispatch_service, location_service, treatment_plant_service)
             elif sub_menu == "Recepción":
-                reception_view(treatment_plant_service=treatment_plant_service)
+                reception_view(reception_service, treatment_plant_service)
             elif sub_menu == "Operaciones (Legacy)":
-                operations_page()
+                operations_page(logistics_service, treatment_service, master_disposal_service, container_service)
                 
         elif module == "Disposición":
-            disposal_operations_page()
+            disposal_operations_page(disposal_service, location_service, driver_service, treatment_plant_service, site_prep_service)
             
         elif module == "Tratamiento":
-            treatment_operations_page()
+            treatment_operations_page(treatment_plant_service, treatment_reception_service, batch_service, container_service, treatment_batch_service, logistics_service)
             
         elif module == "Configuración":
             config_page(

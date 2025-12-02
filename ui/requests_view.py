@@ -2,15 +2,11 @@ import streamlit as st
 from container import get_container
 import datetime
 
-def requests_page(treatment_plant_service=None):
+def requests_page(client_service, location_service, logistics_service, treatment_plant_service):
     st.title("📝 Solicitud de Retiros")
     st.markdown("Ingrese las solicitudes de retiro para sus plantas.")
     
-    services = get_container()
-    client_service = services.client_service
-    location_service = services.location_service
-    ops_service = services.logistics_service
-    treatment_plant_service = treatment_plant_service or services.treatment_plant_service
+    ops_service = logistics_service
     
     # 1. Select Client (Simulating User Context)
     clients = client_service.get_all_clients()

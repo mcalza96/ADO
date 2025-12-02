@@ -1,10 +1,11 @@
 from typing import Dict, Any, Optional
 import json
 from datetime import date
-from repositories.site_repository import SiteRepository
+from database.repository import BaseRepository
 from repositories.load_repository import LoadRepository
 from repositories.batch_repository import BatchRepository
-from repositories.nitrogen_application_repository import NitrogenApplicationRepository
+from models.masters.location import Site
+from models.agronomy.application import NitrogenApplication
 from domain.agronomy.calculator import AgronomyCalculator
 from domain.dtos import NutrientAnalysisDTO, ApplicationScenarioDTO, MetalAnalysisDTO
 from domain.exceptions import AgronomicException, ComplianceException, ComplianceViolationError
@@ -16,8 +17,11 @@ class ComplianceService:
     Enforces Hard Constraints for Sprint 3.
     """
 
-    def __init__(self, site_repo: SiteRepository, load_repo: LoadRepository, 
-                 batch_repo: BatchRepository, application_repo: NitrogenApplicationRepository):
+    def __init__(self,        site_repo: BaseRepository[Site],
+        load_repo: LoadRepository,
+        batch_repo: BatchRepository,
+        application_repo: BaseRepository[NitrogenApplication]
+):
         self.site_repo = site_repo
         self.load_repo = load_repo
         self.batch_repo = batch_repo

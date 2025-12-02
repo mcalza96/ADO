@@ -5,14 +5,13 @@ from ui.treatment.ds4_monitoring import ds4_monitoring_view
 from ui.styles import apply_industrial_style
 import datetime
 
-def treatment_operations_page():
+def treatment_operations_page(treatment_plant_service, treatment_reception_service, batch_service, container_service, treatment_batch_service, logistics_service):
     apply_industrial_style()
     st.title("🏭 Operaciones de Tratamiento")
     
-    services = get_container()
-    plant_service = services.treatment_plant_service
-    reception_service = services.treatment_reception_service
-    batch_service = services.batch_service
+    plant_service = treatment_plant_service
+    reception_service = treatment_reception_service
+    # batch_service = services.batch_service
     
     # 1. Context Selection (Plant)
     plants = plant_service.get_all()
@@ -196,5 +195,5 @@ def treatment_operations_page():
                                 st.error(f"Error: {e}")
 
     with tab_ds4:
-        ds4_monitoring_view(plant_id, services)
+        ds4_monitoring_view(plant_id, container_service, treatment_batch_service, logistics_service)
 

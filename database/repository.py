@@ -198,3 +198,46 @@ class BaseRepository(Generic[T]):
                 return cursor.rowcount > 0
             except sqlite3.Error as e:
                 raise Exception(f"Error deleting {self.table_name} record: {str(e)}")
+
+    def get_by_attribute(self, attribute: str, value: Any) -> Optional[T]:
+        """
+        Get a single record by a specific attribute.
+        
+        Args:
+            attribute: Column name to filter by
+            value: Value to match
+            
+        Returns:
+            Model instance or None if not found
+        """
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            cursor.execute(f"SELECT * FROM {self.table_name} WHERE {attribute} = ?", (value,))
+            row = cursor.fetchone()
+            if row:
+                return self._map_row_to_model(dict(row))
+            return None
+
+    def get_all_filtered(self, **kwargs) -> List[T]:
+        """
+        Get all records matching the given filters.
+        Example: repo.get_all_filtered(contractor_id=1, is_active=1)
+        
+        Args:
+            **kwargs: Column names and values to filter by
+            
+        Returns:
+            List of model instances
+        """
+        if not kwargs:
+            return self.get_all()
+            
+        conditions = [f"{key} = ?" for key in kwargs.keys()]
+        where_clause = " AND ".join(conditions)
+        values = list(kwargs.values())
+        
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            cursor.execute(f"SELECT * FROM {self.table_name} WHERE {where_clause}", tuple(values))
+            rows = cursor.fetchall()
+            return [self._map_row_to_model(dict(row)) for row in rows]

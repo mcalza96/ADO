@@ -1,6 +1,7 @@
 from typing import List
 from database.db_manager import DatabaseManager
-from repositories.plot_repository import PlotRepository
+from database.repository import BaseRepository
+from models.masters.location import Plot
 from database.repository import BaseRepository
 from models.masters.location import Plot
 from models.masters.disposal import SoilSample
@@ -9,7 +10,7 @@ from domain.compliance.validator import ComplianceValidator
 
 class DisposalService:
     def __init__(self, db_manager: DatabaseManager):
-        self.plot_repo = PlotRepository(db_manager)
+        self.plot_repo = BaseRepository(db_manager, Plot, "plots")
         self.soil_repo = BaseRepository(db_manager, SoilSample, "soil_samples")
         self.db_manager = db_manager
 

@@ -1,24 +1,21 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-from container import get_container
 from database.db_manager import DatabaseManager
 
-def agronomy_dashboard_page():
+def agronomy_dashboard_page(reporting_service, location_service):
     st.header("Drill-Down Agronómico")
     
-    services = get_container()
-    service = services.reporting_service
+    service = reporting_service
     
     # Select Site (Master Filter)
     # We need to list sites first.
-    # For MVP, let's just fetch all sites.
-    with DatabaseManager() as conn:
-        sites = pd.read_sql_query("SELECT id, name FROM sites", conn)
-        
-    if sites.empty:
+    sites_list = location_service.get_all_sites()
+    if not sites_list:
         st.warning("No hay sitios registrados.")
         return
+
+    sites = pd.DataFrame([vars(s) for s in sites_list])
         
     selected_site_name = st.selectbox("Seleccionar Campo/Sitio", sites['name'])
     selected_site_id = sites[sites['name'] == selected_site_name]['id'].iloc[0]

@@ -1,12 +1,10 @@
 import streamlit as st
 from container import get_container
 
-def dashboard_page():
+def dashboard_page(dashboard_service):
     st.title("Dashboard Operativo")
     st.markdown("### Resumen General")
     
-    services = get_container()
-    dashboard_service = services.dashboard_service
     stats = dashboard_service.get_stats()
     
     col1, col2, col3, col4 = st.columns(4)

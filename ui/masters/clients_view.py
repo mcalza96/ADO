@@ -1,17 +1,11 @@
 
 import streamlit as st
-from container import get_container
 from models.masters.client import Client
 from models.masters.treatment_plant import TreatmentPlant
 
 
-def clients_page(treatment_plant_service=None):
+def clients_page(client_service, location_service, treatment_plant_service):
     st.header("Gestión de Clientes (Generadores)")
-    
-    services = get_container()
-    client_service = services.client_service
-    location_service = services.location_service
-    treatment_plant_service = treatment_plant_service or services.treatment_plant_service
     
     # Form to add new client
     with st.expander("➕ Agregar Nuevo Cliente"):

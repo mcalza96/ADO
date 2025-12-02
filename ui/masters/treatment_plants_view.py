@@ -1,12 +1,10 @@
 
 import streamlit as st
-from container import get_container
 
-def treatment_plants_page(treatment_plant_service=None):
+def treatment_plants_page(treatment_plant_service):
     st.subheader("🏭 Plantas de Tratamiento (Propias)")
     
-    services = get_container()
-    service = treatment_plant_service or services.treatment_plant_service
+    service = treatment_plant_service
     
     # Create Form
     with st.expander("Nueva Planta de Tratamiento"):
