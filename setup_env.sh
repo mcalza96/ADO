@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Create virtual environment if it doesn't exist
-if [ ! -d "venv" ]; then
+if [ ! -d ".venv" ]; then
     echo "Creating virtual environment..."
-    python3 -m venv venv
+    python3 -m venv .venv
 fi
 
 # Activate virtual environment
-source venv/bin/activate
+source .venv/bin/activate
 
 # Upgrade pip
 pip install --upgrade pip
@@ -21,5 +21,5 @@ else
 fi
 
 echo "Setup complete. To run the app:"
-echo "source venv/bin/activate"
+echo "source .venv/bin/activate"
 echo "streamlit run main.py"

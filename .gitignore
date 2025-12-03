@@ -26,3 +26,6 @@ database/*.db
 
 # Streamlit cache
 *.cache/
+
+# Generated reports
+reports/manifests/*.pdf
