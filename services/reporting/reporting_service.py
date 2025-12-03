@@ -25,7 +25,10 @@ class ReportingService:
             start_date, end_date = date_range
             # Ensure dispatch_time is datetime
             df['dispatch_time'] = pd.to_datetime(df['dispatch_time'])
-            mask = (df['dispatch_time'].dt.date >= start_date) & (df['dispatch_time'].dt.date <= end_date)
+            # Convert date objects to Timestamp for comparison
+            start_ts = pd.Timestamp(start_date)
+            end_ts = pd.Timestamp(end_date)
+            mask = (df['dispatch_time'] >= start_ts) & (df['dispatch_time'] <= end_ts)
             df = df.loc[mask]
 
         if client_id:

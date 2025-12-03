@@ -54,6 +54,11 @@ class TreatmentBatchService:
             cursor.execute("SELECT * FROM treatment_batches WHERE facility_id = ? AND status = 'READY' ORDER BY fill_time DESC", (facility_id,))
             rows = cursor.fetchall()
             return [TreatmentBatch(**dict(row)) for row in rows]
+    
+    def get_batches_by_facility(self, facility_id: int) -> List[TreatmentBatch]:
+        """Returns empty list - TreatmentBatches are not used in current implementation.
+        Use TreatmentService.get_batches_by_facility() for production batches instead."""
+        return []
             
     def get_ready_batches(self, plant_id: int) -> List[TreatmentBatch]:
         with self.db_manager as conn:

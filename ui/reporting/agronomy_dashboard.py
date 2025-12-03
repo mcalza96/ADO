@@ -15,7 +15,14 @@ def agronomy_dashboard_page(reporting_service, location_service):
         st.warning("No hay sitios registrados.")
         return
 
-    sites = pd.DataFrame([vars(s) for s in sites_list])
+    # Convert Site entities to dictionaries for DataFrame
+    sites = pd.DataFrame([{
+        'id': s.id,
+        'name': s.name,
+        'owner_name': getattr(s, 'owner_name', ''),
+        'region': getattr(s, 'region', ''),
+        'is_active': getattr(s, 'is_active', True)
+    } for s in sites_list])
         
     selected_site_name = st.selectbox("Seleccionar Campo/Sitio", sites['name'])
     selected_site_id = sites[sites['name'] == selected_site_name]['id'].iloc[0]

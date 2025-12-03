@@ -24,12 +24,17 @@ class Load:
     
     # Operational Data
     material_class: Optional[str] = None
+    ticket_number: Optional[str] = None  # Número de ticket de pesaje
     guide_number: Optional[str] = None  # Guía de despacho
+    reception_observations: Optional[str] = None  # Observaciones en recepción
+    quality_ph: Optional[float] = None  # pH de la carga
+    quality_humidity: Optional[float] = None  # Humedad de la carga (%)
     gross_weight: Optional[float] = None
     tare_weight: Optional[float] = None
     net_weight: Optional[float] = None
     weight_net: Optional[float] = None  # Alias for net_weight (backward compatibility)
     weight_gross_reception: Optional[float] = None  # Peso bruto en recepción
+    disposal_time: Optional[datetime] = None  # Tiempo de disposición final
     
     # Status and Timing
     status: str = 'CREATED'

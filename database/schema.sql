@@ -221,17 +221,29 @@ CREATE TABLE IF NOT EXISTS loads (
     container_id INTEGER, -- Nullable: not always used
     destination_site_id INTEGER NOT NULL,
     destination_plot_id INTEGER NOT NULL,
+    batch_id INTEGER, -- Link to source batch
     
     -- Operational Data
     material_class TEXT CHECK (material_class IN ('Class A', 'Class B')),
     gross_weight REAL, -- Peso Bruto - Kg
     tare_weight REAL, -- Tara - Kg
     net_weight REAL, -- Calculated: Bruto - Tara
+    weight_gross_reception REAL, -- Weight at reception
+    reception_observations TEXT, -- Observations at reception
+    quality_ph REAL, -- pH of the load
+    quality_humidity REAL, -- Humidity percentage of the load
+    
+    -- Document Numbers
+    ticket_number TEXT, -- Ticket number from weighing
+    guide_number TEXT, -- Transport guide number
     
     -- Status and Timing
     status TEXT NOT NULL CHECK (status IN ('CREATED', 'IN_TRANSIT', 'ARRIVED', 'COMPLETED', 'CANCELLED')) DEFAULT 'CREATED',
+    requested_date DATE, -- Date when load was requested
+    scheduled_date DATE, -- Date when load was scheduled
     dispatch_time DATETIME, -- Salida planta
     arrival_time DATETIME, -- Llegada campo
+    disposal_time DATETIME, -- Disposal completion time
     
     -- Audit
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -246,6 +258,7 @@ CREATE TABLE IF NOT EXISTS loads (
     FOREIGN KEY (container_id) REFERENCES containers(id),
     FOREIGN KEY (destination_site_id) REFERENCES sites(id),
     FOREIGN KEY (destination_plot_id) REFERENCES plots(id),
+    FOREIGN KEY (batch_id) REFERENCES batches(id),
     FOREIGN KEY (created_by_user_id) REFERENCES users(id)
 );
 
@@ -278,16 +291,16 @@ DROP VIEW IF EXISTS view_full_traceability;
 CREATE VIEW view_full_traceability AS
 SELECT 
     l.id AS load_id,
-    l.ticket_number,
-    l.guide_number,
+    COALESCE(l.ticket_number, '') AS ticket_number,
+    COALESCE(l.guide_number, '') AS guide_number,
     l.status,
     l.requested_date,
     l.scheduled_date,
     l.dispatch_time,
     l.arrival_time,
-    l.weight_gross,
-    l.weight_tare,
-    l.weight_net,
+    l.gross_weight AS weight_gross,
+    l.tare_weight AS weight_tare,
+    COALESCE(l.net_weight, (COALESCE(l.gross_weight, 0) - COALESCE(l.tare_weight, 0))) AS weight_net,
     
     -- Client & Facility
     c.name AS client_name,

@@ -11,7 +11,7 @@ def treatment_operations_page(treatment_plant_service, treatment_reception_servi
     
     plant_service = treatment_plant_service
     reception_service = treatment_reception_service
-    # batch_service = services.batch_service
+    # Use batch_service which is actually TreatmentService for production batches
     
     # 1. Context Selection (Plant)
     plants = plant_service.get_all()

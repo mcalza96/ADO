@@ -12,6 +12,9 @@ from ui.reporting.client_portal import client_portal_page
 from ui.reporting.logistics_dashboard import logistics_dashboard_page
 from ui.reporting.agronomy_dashboard import agronomy_dashboard_page
 
+# Import Registry-based modules (auto-register their pages)
+import ui.modules.logistics  # Auto-registers: Despacho, Recepción, Planificación, Tracking
+
 # Page configuration
 st.set_page_config(
     page_title="Biosolids ERP",
@@ -91,7 +94,7 @@ def main():
             st.divider()
             
             # Nuevo Menú Simplificado
-            menu_options = ["Mi Bandeja (Inbox)", "Dashboard", "Reportes", "Configuración"]
+            menu_options = ["Mi Bandeja (Inbox)", "Dashboard", "Operaciones", "Reportes", "Configuración"]
             selection = st.radio("Navegación", menu_options)
             
             st.divider()
@@ -107,6 +110,61 @@ def main():
             
         elif selection == "Dashboard":
             dashboard_page(dashboard_service)
+            
+        elif selection == "Operaciones":
+            # Sub-navigation for Operations
+            ops_menu = st.sidebar.radio(
+                "Módulos Operacionales",
+                ["🚛 Logística (Despacho)", "🏭 Tratamiento (Planta)", "🌾 Disposición Final (Agro)"]
+            )
+            
+            if ops_menu == "🚛 Logística (Despacho)":
+                # Use Registry Pattern for Logistics
+                from ui.registry import UIRegistry, MenuBuilder
+                
+                # Get logistics menu items
+                all_items = UIRegistry.get_all_items()
+                logistics_items = all_items.get("Operaciones Logísticas", [])
+                
+                if logistics_items:
+                    st.sidebar.markdown("---")
+                    st.sidebar.markdown("### 📋 Operaciones Disponibles")
+                    
+                    # Create menu from registered items
+                    menu_options = {f"{item.icon} {item.title}": item for item in sorted(logistics_items, key=lambda x: x.order)}
+                    selected_option = st.sidebar.radio("Seleccione operación:", list(menu_options.keys()), label_visibility="collapsed")
+                    
+                    # Render selected page
+                    if selected_option:
+                        selected_item = menu_options[selected_option]
+                        try:
+                            # Call the page function with container
+                            selected_item.page_func(services)
+                        except Exception as e:
+                            st.error(f"Error al cargar la página: {str(e)}")
+                            st.exception(e)
+                else:
+                    st.warning("No hay operaciones de logística registradas")
+                    st.info("Verifica que el módulo ui.modules.logistics esté importado correctamente")
+                
+            elif ops_menu == "🏭 Tratamiento (Planta)":
+                treatment_operations_page(
+                    treatment_plant_service=treatment_plant_service,
+                    treatment_reception_service=treatment_reception_service,
+                    batch_service=treatment_service,  # Use TreatmentService for batches
+                    container_service=container_service,
+                    treatment_batch_service=treatment_batch_service,
+                    logistics_service=logistics_service
+                )
+                
+            elif ops_menu == "🌾 Disposición Final (Agro)":
+                disposal_operations_page(
+                    disposal_service=disposal_service,
+                    location_service=location_service,
+                    driver_service=driver_service,
+                    treatment_plant_service=treatment_plant_service,
+                    site_prep_service=site_prep_service
+                )
             
         elif selection == "Reportes":
             # Sub-navigation for Reportes

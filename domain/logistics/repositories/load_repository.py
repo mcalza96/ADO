@@ -158,7 +158,7 @@ class LoadRepository(BaseRepository[Load]):
             LEFT JOIN drivers d ON l.driver_id = d.id
             LEFT JOIN facilities f ON l.origin_facility_id = f.id
             LEFT JOIN sites s ON l.destination_site_id = s.id
-            LEFT JOIN treatment_plants tp ON l.destination_treatment_plant_id = tp.id
+            LEFT JOIN facilities tp ON l.destination_treatment_plant_id = tp.id
             WHERE 1=1
         """
         params = []

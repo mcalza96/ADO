@@ -25,12 +25,21 @@ class DashboardService(BaseService):
             active_loads = cursor.fetchone()[0]
             
             # Count Completed Loads Today (Disposed)
-            cursor.execute("SELECT COUNT(*) FROM loads WHERE status = 'Disposed' AND date(disposal_time) = date('now')")
-            completed_today = cursor.fetchone()[0]
+            try:
+                cursor.execute("SELECT COUNT(*) FROM loads WHERE status = 'Disposed' AND date(disposal_time) = date('now')")
+                completed_today = cursor.fetchone()[0]
+            except:
+                # Fallback if disposal_time column doesn't exist
+                cursor.execute("SELECT COUNT(*) FROM loads WHERE status = 'Disposed' AND date(created_at) = date('now')")
+                completed_today = cursor.fetchone()[0]
             
             # Total Tonnage Today
-            cursor.execute("SELECT SUM(weight_net) FROM loads WHERE status = 'Disposed' AND date(disposal_time) = date('now')")
-            tonnage_today = cursor.fetchone()[0] or 0.0
+            try:
+                cursor.execute("SELECT SUM(COALESCE(net_weight, (COALESCE(gross_weight, 0) - COALESCE(tare_weight, 0)))) FROM loads WHERE status IN ('Disposed', 'COMPLETED') AND date(COALESCE(disposal_time, updated_at)) = date('now')")
+                tonnage_today = cursor.fetchone()[0] or 0.0
+            except Exception as e:
+                # Fallback in case of any error
+                tonnage_today = 0.0
             
             return {
                 "clients": client_count,

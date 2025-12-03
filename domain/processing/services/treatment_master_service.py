@@ -1,4 +1,5 @@
 from typing import List
+from datetime import datetime
 from database.db_manager import DatabaseManager
 from database.repository import BaseRepository
 from domain.processing.entities.treatment_type import Batch, LabResult
@@ -18,6 +19,23 @@ class TreatmentService:
             return [Batch(**dict(row)) for row in rows]
 
     def create_batch(self, batch: Batch) -> Batch:
+        return self.batch_repo.add(batch)
+    
+    def create_daily_batch(self, facility_id: int, batch_code: str, production_date, 
+                          initial_tonnage: float, class_type: str, sludge_type: str = None) -> Batch:
+        """Creates a new daily batch."""
+        batch = Batch(
+            id=None,
+            facility_id=facility_id,
+            batch_code=batch_code,
+            production_date=production_date,
+            initial_tonnage=initial_tonnage,
+            current_tonnage=initial_tonnage,
+            class_type=class_type,
+            sludge_type=sludge_type,
+            status='Available',
+            created_at=datetime.now()
+        )
         return self.batch_repo.add(batch)
 
     # --- Lab Results ---

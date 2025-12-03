@@ -35,12 +35,12 @@ class LocationService:
         """
         return self.site_repo.get_by_id(site_id)
 
-    @st.cache_data(ttl=3600)
-    def get_all_sites(_self, active_only: bool = False) -> List[Site]:
+    def get_all_sites(self, active_only: bool = False) -> List[Site]:
         """
         Retrieves all sites, optionally filtering by active status.
+        Returns a list of Site entities (not cached due to serializability).
         """
-        sites = _self.site_repo.get_all(active_only=active_only)
+        sites = self.site_repo.get_all(active_only=active_only)
         return sites
 
     def create_plot(self, plot: Plot) -> Plot:

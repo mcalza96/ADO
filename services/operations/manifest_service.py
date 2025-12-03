@@ -26,7 +26,7 @@ class ManifestService:
         self.load_repo = LoadRepository(db_manager)
         self.site_repo = BaseRepository(db_manager, Site, "sites")
         self.plot_repo = BaseRepository(db_manager, Plot, "plots")
-        self.facility_repo = BaseRepository(db_manager, TreatmentPlant, "treatment_plants")
+        self.facility_repo = BaseRepository(db_manager, TreatmentPlant, "facilities")
         self.driver_repo = BaseRepository(db_manager, Driver, "drivers")
         self.vehicle_repo = BaseRepository(db_manager, Vehicle, "vehicles")
         

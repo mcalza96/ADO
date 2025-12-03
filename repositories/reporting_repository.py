@@ -29,10 +29,10 @@ class ReportingRepository:
                 l.status,
                 l.dispatch_time,
                 l.arrival_time,
-                l.weight_gross_reception as weight_arrival,
-                l.weight_net,
-                l.ticket_number,
-                l.guide_number,
+                COALESCE(l.weight_gross_reception, l.gross_weight) as weight_arrival,
+                COALESCE(l.net_weight, (COALESCE(l.gross_weight, 0) - COALESCE(l.tare_weight, 0))) as weight_net,
+                COALESCE(l.ticket_number, '') as ticket_number,
+                COALESCE(l.guide_number, '') as guide_number,
                 v.license_plate,
                 d.name as driver_name,
                 f.name as facility_name,
@@ -43,7 +43,7 @@ class ReportingRepository:
             LEFT JOIN drivers d ON l.driver_id = d.id
             LEFT JOIN facilities f ON l.origin_facility_id = f.id
             LEFT JOIN sites s ON l.destination_site_id = s.id
-            WHERE l.status IN ('Dispatched', 'Arrived')
+            WHERE l.status IN ('Dispatched', 'Arrived', 'IN_TRANSIT', 'ARRIVED')
             ORDER BY l.dispatch_time DESC
         """
         with self.db_manager as conn:

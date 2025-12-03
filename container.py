@@ -175,7 +175,7 @@ def get_container() -> SimpleNamespace:
     contractor_service = GenericCrudService(contractor_repo)
     driver_service = GenericCrudService(driver_repo)
     vehicle_service = GenericCrudService(vehicle_repo)
-    treatment_plant_service = GenericCrudService(BaseRepository(db_manager, TreatmentPlant, "treatment_plants"))
+    treatment_plant_service = GenericCrudService(BaseRepository(db_manager, TreatmentPlant, "facilities"))
     container_service = GenericCrudService(BaseRepository(db_manager, Container, "containers"))
     master_disposal_service = MasterDisposalService(db_manager)
     treatment_service = TreatmentService(db_manager)
