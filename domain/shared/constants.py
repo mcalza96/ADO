@@ -21,7 +21,8 @@ CROP_REQUIREMENTS = {
     'Pasture': 80.0
 }
 
-# EPA 503 Table 1 - Ceiling Concentrations for Heavy Metals (mg/kg dry weight)
+# EPA 40 CFR Part 503 - Table 1 Ceiling Concentrations (mg/kg dry weight)
+# Single source of truth for EPA metal limits
 EPA_503_TABLE1_LIMITS = {
     'arsenic': 75.0,
     'cadmium': 85.0,
@@ -33,24 +34,14 @@ EPA_503_TABLE1_LIMITS = {
     'zinc': 7500.0
 }
 
+# Alias for backward compatibility
+EPA_CEILING_LIMITS = EPA_503_TABLE1_LIMITS
+
+# Site Restrictions for biosolid class B
+RESTRICTED_SITE_TYPES = ['Public Park', 'Home Garden', 'School', 'Playground']
+
 # Default nitrogen application limit if not specified by site (kg N/ha/year)
 DEFAULT_NITROGEN_LIMIT = 200.0
 
-from enum import Enum
-
-class TaskPriority(Enum):
-    HIGH = "High"
-    MEDIUM = "Medium"
-    LOW = "Low"
-
-# LoadStatus is now in domain.logistics.entities.load_status
-# Import from there instead of using this deprecated version
-
-class Role(Enum):
-    DRIVER = "Driver"
-    ADMIN = "Admin"
-    OPERATOR = "Operator"
-    LAB_TECH = "LabTech"
-    DISPATCHER = "Dispatcher"
-
-
+# Alias for agronomy limits (kg N/ha/year)
+MAX_N_PER_HA = DEFAULT_NITROGEN_LIMIT

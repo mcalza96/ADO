@@ -1,6 +1,6 @@
 from domain.shared.dtos import MetalAnalysisDTO
 from domain.shared.exceptions import ComplianceException
-from domain.shared.compliance_constants import EPA_CEILING_LIMITS, RESTRICTED_SITE_TYPES
+from domain.shared.constants import EPA_CEILING_LIMITS, RESTRICTED_SITE_TYPES
 
 class ComplianceValidator:
     """
