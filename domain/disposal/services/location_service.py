@@ -65,8 +65,8 @@ class LocationService:
         Validates plot business rules.
         """
         # 1. Area Positive
-        if plot.area_acres <= 0:
-            raise ValueError("El área de la parcela debe ser mayor a 0 acres.")
+        if plot.area_hectares is None or plot.area_hectares <= 0:
+            raise ValueError("El área de la parcela debe ser mayor a 0 hectáreas.")
 
         # 2. Unicidad Local (Name unique within Site)
         existing_plots = self.plot_repo.get_all_filtered(site_id=plot.site_id, is_active=1)

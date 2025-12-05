@@ -1,5 +1,7 @@
 import streamlit as st
 from domain.shared.entities.location import Site, Plot
+from ui.state import AppState
+from ui.constants import Region, DefaultCoordinates
 
 
 def render(location_service):
@@ -11,11 +13,9 @@ def render(location_service):
     """
     st.header("🌾 Gestión de Predios y Parcelas")
     
-    # Initialize session state
-    if 'selected_site_id' not in st.session_state:
-        st.session_state['selected_site_id'] = None
-    if 'plot_edit_id' not in st.session_state:
-        st.session_state['plot_edit_id'] = None
+    # Initialize session state using AppState constants
+    AppState.init_if_missing(AppState.SELECTED_SITE_ID, None)
+    AppState.init_if_missing(AppState.PLOT_EDIT_ID, None)
     
     # Create 2-column layout
     col_list, col_detail = st.columns([1, 2])
@@ -25,8 +25,8 @@ def render(location_service):
         st.subheader("Predios")
         
         # Add New Site Button
-        if st.button("➕ Nuevo Predio", use_container_width=True):
-            st.session_state['selected_site_id'] = 'NEW'
+        if st.button("➕ Nuevo Predio", width="stretch"):
+            AppState.set(AppState.SELECTED_SITE_ID, 'NEW')
         
         st.divider()
         
@@ -35,24 +35,24 @@ def render(location_service):
         
         if sites:
             for site in sites:
-                is_selected = st.session_state['selected_site_id'] == site.id
+                is_selected = AppState.get(AppState.SELECTED_SITE_ID) == site.id
                 button_type = "primary" if is_selected else "secondary"
                 
                 if st.button(
                     f"📍 {site.name}",
                     key=f"site_{site.id}",
-                    use_container_width=True,
+                    width="stretch",
                     type=button_type
                 ):
-                    st.session_state['selected_site_id'] = site.id
-                    st.session_state['plot_edit_id'] = None
+                    AppState.set(AppState.SELECTED_SITE_ID, site.id)
+                    AppState.set(AppState.PLOT_EDIT_ID, None)
                     st.rerun()
         else:
             st.info("No hay predios registrados")
     
     # RIGHT COLUMN: Site Details + Plots
     with col_detail:
-        selected_site_id = st.session_state['selected_site_id']
+        selected_site_id = AppState.get(AppState.SELECTED_SITE_ID)
         
         if selected_site_id is None:
             st.info("👈 Seleccione un predio de la lista o cree uno nuevo")
@@ -64,23 +64,20 @@ def render(location_service):
             with st.form("new_site_form"):
                 name = st.text_input("Nombre del Predio *", placeholder="ej. Fundo Los Olivos")
                 owner = st.text_input("Propietario / Agricultor", placeholder="ej. Juan Pérez")
-                region = st.selectbox(
-                    "Región",
-                    ["Metropolitana", "Valparaíso", "O'Higgins", "Maule", "Biobío", "Araucanía", "Los Lagos"]
-                )
+                region = st.selectbox("Región", Region.get_list())
                 address = st.text_input("Dirección / Referencia", placeholder="ej. Camino a Melipilla km 45")
                 
                 col1, col2 = st.columns(2)
                 with col1:
-                    latitude = st.number_input("Latitud", format="%.6f", value=-33.4489)
+                    latitude = st.number_input("Latitud", format="%.6f", value=DefaultCoordinates.LATITUDE)
                 with col2:
-                    longitude = st.number_input("Longitud", format="%.6f", value=-70.6693)
+                    longitude = st.number_input("Longitud", format="%.6f", value=DefaultCoordinates.LONGITUDE)
                 
                 col_submit, col_cancel = st.columns(2)
                 with col_submit:
-                    submitted = st.form_submit_button("💾 Guardar Predio", use_container_width=True)
+                    submitted = st.form_submit_button("💾 Guardar Predio", width="stretch")
                 with col_cancel:
-                    cancelled = st.form_submit_button("❌ Cancelar", use_container_width=True)
+                    cancelled = st.form_submit_button("❌ Cancelar", width="stretch")
                 
                 if submitted:
                     if not name:
@@ -98,13 +95,13 @@ def render(location_service):
                             )
                             created_site = location_service.create_site(site)
                             st.success(f"✅ Predio '{name}' creado exitosamente")
-                            st.session_state['selected_site_id'] = created_site.id
+                            AppState.set(AppState.SELECTED_SITE_ID, created_site.id)
                             st.rerun()
                         except Exception as e:
                             st.error(f"❌ Error al crear predio: {e}")
                 
                 if cancelled:
-                    st.session_state['selected_site_id'] = None
+                    AppState.set(AppState.SELECTED_SITE_ID, None)
                     st.rerun()
         
         else:
@@ -113,7 +110,7 @@ def render(location_service):
             
             if not site:
                 st.error("Predio no encontrado")
-                st.session_state['selected_site_id'] = None
+                AppState.set(AppState.SELECTED_SITE_ID, None)
                 st.rerun()
                 return
             
@@ -126,16 +123,16 @@ def render(location_service):
                     owner = st.text_input("Propietario", value=site.owner_name or "")
                     region = st.selectbox(
                         "Región",
-                        ["Metropolitana", "Valparaíso", "O'Higgins", "Maule", "Biobío", "Araucanía", "Los Lagos"],
-                        index=0 if not site.region else ["Metropolitana", "Valparaíso", "O'Higgins", "Maule", "Biobío", "Araucanía", "Los Lagos"].index(site.region) if site.region in ["Metropolitana", "Valparaíso", "O'Higgins", "Maule", "Biobío", "Araucanía", "Los Lagos"] else 0
+                        Region.get_list(),
+                        index=Region.get_index(site.region)
                     )
                     address = st.text_input("Dirección", value=site.address or "")
                     
                     col1, col2 = st.columns(2)
                     with col1:
-                        latitude = st.number_input("Latitud", format="%.6f", value=site.latitude or -33.4489)
+                        latitude = st.number_input("Latitud", format="%.6f", value=site.latitude or DefaultCoordinates.LATITUDE)
                     with col2:
-                        longitude = st.number_input("Longitud", format="%.6f", value=site.longitude or -70.6693)
+                        longitude = st.number_input("Longitud", format="%.6f", value=site.longitude or DefaultCoordinates.LONGITUDE)
                     
                     if st.form_submit_button("💾 Actualizar Predio"):
                         try:
@@ -160,23 +157,23 @@ def render(location_service):
             plots = location_service.get_plots_by_site(selected_site_id)
             
             # Add/Edit Plot Form
-            plot_edit_id = st.session_state.get('plot_edit_id')
+            plot_edit_id = AppState.get(AppState.PLOT_EDIT_ID)
             
             if plot_edit_id == 'NEW' or plot_edit_id:
                 if plot_edit_id == 'NEW':
                     st.write("**Nueva Parcela**")
-                    plot = Plot(id=None, site_id=selected_site_id, name="", area_acres=0.0)
+                    plot = Plot(id=None, site_id=selected_site_id, name="", area_hectares=0.0)
                 else:
                     plot = next((p for p in plots if p.id == plot_edit_id), None)
                     if not plot:
-                        st.session_state['plot_edit_id'] = None
+                        AppState.set(AppState.PLOT_EDIT_ID, None)
                         st.rerun()
                         return
                     st.write(f"**Editar Parcela: {plot.name}**")
                 
                 with st.form("plot_form"):
                     plot_name = st.text_input("Nombre de la Parcela *", value=plot.name, placeholder="ej. Sector Norte")
-                    plot_area = st.number_input("Área (hectáreas)", min_value=0.0, step=0.1, value=plot.area_acres or 0.0)
+                    plot_area = st.number_input("Área (hectáreas)", min_value=0.0, step=0.1, value=plot.area_hectares or 0.0)
                     plot_geometry = st.text_area(
                         "Geometría WKT (opcional)",
                         value=plot.geometry_wkt or "",
@@ -186,9 +183,9 @@ def render(location_service):
                     
                     col_save, col_cancel = st.columns(2)
                     with col_save:
-                        save_plot = st.form_submit_button("💾 Guardar Parcela", use_container_width=True)
+                        save_plot = st.form_submit_button("💾 Guardar Parcela", width="stretch")
                     with col_cancel:
-                        cancel_plot = st.form_submit_button("❌ Cancelar", use_container_width=True)
+                        cancel_plot = st.form_submit_button("❌ Cancelar", width="stretch")
                     
                     if save_plot:
                         if not plot_name:
@@ -196,7 +193,7 @@ def render(location_service):
                         else:
                             try:
                                 plot.name = plot_name
-                                plot.area_acres = plot_area
+                                plot.area_hectares = plot_area
                                 plot.geometry_wkt = plot_geometry if plot_geometry else None
                                 
                                 if plot.id is None:
@@ -206,7 +203,7 @@ def render(location_service):
                                     location_service.update_plot(plot)
                                     st.success(f"✅ Parcela '{plot_name}' actualizada exitosamente")
                                 
-                                st.session_state['plot_edit_id'] = None
+                                AppState.set(AppState.PLOT_EDIT_ID, None)
                                 st.rerun()
                             except ValueError as ve:
                                 st.error(f"⚠️ Error de validación: {ve}")
@@ -214,42 +211,68 @@ def render(location_service):
                                 st.error(f"❌ Error al guardar parcela: {e}")
                     
                     if cancel_plot:
-                        st.session_state['plot_edit_id'] = None
+                        AppState.set(AppState.PLOT_EDIT_ID, None)
                         st.rerun()
             else:
                 # Show Add Plot button
-                if st.button("➕ Nueva Parcela", use_container_width=True):
-                    st.session_state['plot_edit_id'] = 'NEW'
+                if st.button("➕ Nueva Parcela", width="stretch"):
+                    AppState.set(AppState.PLOT_EDIT_ID, 'NEW')
                     st.rerun()
             
             st.divider()
             
-            # Display Plots Table
+            # Display Plots Table using st.dataframe with selection
             if plots:
                 st.write(f"**Parcelas Registradas ({len(plots)})**")
                 
-                for plot in plots:
-                    with st.container():
-                        col1, col2, col3 = st.columns([3, 1, 1])
+                # Build DataFrame for display
+                plots_data = [{
+                    "id": p.id,
+                    "Nombre": p.name,
+                    "Área (ha)": f"{p.area_hectares or 0:.2f}",
+                    "Geometría": "✓" if p.geometry_wkt else "—"
+                } for p in plots]
+                
+                import pandas as pd
+                df_plots = pd.DataFrame(plots_data)
+                
+                # Interactive table with selection
+                event = st.dataframe(
+                    df_plots,
+                    width="stretch",
+                    hide_index=True,
+                    column_config={
+                        "id": None,  # Hide ID column
+                        "Nombre": st.column_config.TextColumn("Nombre", width="medium"),
+                        "Área (ha)": st.column_config.TextColumn("Área (ha)", width="small"),
+                        "Geometría": st.column_config.TextColumn("WKT", width="small")
+                    },
+                    selection_mode="single-row",
+                    on_select="rerun"
+                )
+                
+                # Handle selection for edit/delete actions
+                selected_rows = event.selection.get("rows", [])
+                if selected_rows:
+                    selected_plot_id = plots_data[selected_rows[0]]["id"]
+                    selected_plot = next((p for p in plots if p.id == selected_plot_id), None)
+                    
+                    if selected_plot:
+                        st.caption(f"Parcela seleccionada: **{selected_plot.name}**")
+                        col_edit, col_delete = st.columns(2)
                         
-                        with col1:
-                            st.write(f"**{plot.name}**")
-                            st.caption(f"Área: {plot.area_acres or 0:.2f} ha" + (f" | WKT: ✓" if plot.geometry_wkt else ""))
-                        
-                        with col2:
-                            if st.button("✏️ Editar", key=f"edit_plot_{plot.id}"):
-                                st.session_state['plot_edit_id'] = plot.id
+                        with col_edit:
+                            if st.button("✏️ Editar Parcela", width="stretch"):
+                                AppState.set(AppState.PLOT_EDIT_ID, selected_plot.id)
                                 st.rerun()
                         
-                        with col3:
-                            if st.button("🗑️ Eliminar", key=f"delete_plot_{plot.id}", type="secondary"):
+                        with col_delete:
+                            if st.button("🗑️ Eliminar Parcela", width="stretch", type="secondary"):
                                 try:
-                                    location_service.delete_plot(plot.id)
-                                    st.success(f"✅ Parcela '{plot.name}' eliminada")
+                                    location_service.delete_plot(selected_plot.id)
+                                    st.success(f"✅ Parcela '{selected_plot.name}' eliminada")
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"❌ Error: {e}")
-                        
-                        st.divider()
             else:
                 st.info("No hay parcelas registradas para este predio")

@@ -1,15 +1,30 @@
+"""
+Agronomy Dashboard - Drill-down agronómico con visualización de parcelas
+
+Este dashboard permite analizar el estado de aplicación de nitrógeno
+por sitio y parcela con soporte de selección interactiva.
+"""
+
 import streamlit as st
 import pandas as pd
 import altair as alt
-from database.db_manager import DatabaseManager
+from typing import Optional, Any
 
-def agronomy_dashboard_page(reporting_service, location_service):
+
+def agronomy_dashboard_page(reporting_service, location_service, agronomy_service: Optional[Any] = None):
+    """
+    Dashboard agronómico con drill-down por parcela.
+    
+    Args:
+        reporting_service: ReportingService para estadísticas agregadas
+        location_service: LocationService para obtener sitios
+        agronomy_service: AgronomyDomainService para historial de aplicaciones (opcional)
+    """
     st.header("Drill-Down Agronómico")
     
     service = reporting_service
     
     # Select Site (Master Filter)
-    # We need to list sites first.
     sites_list = location_service.get_all_sites()
     if not sites_list:
         st.warning("No hay sitios registrados.")
@@ -42,7 +57,7 @@ def agronomy_dashboard_page(reporting_service, location_service):
             # Configure Grid with Selection
             event = st.dataframe(
                 df_plots,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
                 column_config={
                     "name": "Parcela",
@@ -57,11 +72,10 @@ def agronomy_dashboard_page(reporting_service, location_service):
                     "max_n": st.column_config.NumberColumn("Capacidad (kg)", format="%.1f")
                 },
                 selection_mode="single-row",
-                on_select="rerun" # Rerun to update the detail view
+                on_select="rerun"
             )
             
             # Get Selection
-            # st.dataframe with selection returns a dict with 'rows' indices
             selected_indices = event.selection.get("rows", [])
             
     with col_detail:
@@ -73,20 +87,8 @@ def agronomy_dashboard_page(reporting_service, location_service):
             
             st.subheader(f"Detalle: {plot_name}")
             
-            # Fetch history for this plot
-            # We can use a direct query here or add a method to service.
-            # For speed, let's add a quick query here or reuse service if possible.
-            # Service doesn't have 'get_plot_history', so let's do a quick query via DB Manager for now
-            # or extend service. Let's extend service via a direct call pattern for now to keep it cleanish.
-            
-            query_history = """
-                SELECT application_date, nitrogen_load_applied, total_tonnage_applied
-                FROM applications
-                WHERE plot_id = ?
-                ORDER BY application_date DESC
-            """
-            with DatabaseManager() as conn:
-                df_history = pd.read_sql_query(query_history, conn, params=(int(plot_id),))
+            # Fetch history using service (not raw SQL in UI)
+            df_history = _get_plot_history(agronomy_service, int(plot_id))
                 
             if not df_history.empty:
                 # Chart
@@ -96,10 +98,10 @@ def agronomy_dashboard_page(reporting_service, location_service):
                     tooltip=['application_date', 'nitrogen_load_applied']
                 ).properties(title="Aplicación de Nitrógeno por Fecha")
                 
-                st.altair_chart(chart, use_container_width=True)
+                st.altair_chart(chart, width="stretch")
                 
                 st.caption("Historial de Aplicaciones")
-                st.dataframe(df_history, use_container_width=True, hide_index=True)
+                st.dataframe(df_history, width="stretch", hide_index=True)
             else:
                 st.info("No hay aplicaciones registradas para esta parcela.")
                 
@@ -107,3 +109,29 @@ def agronomy_dashboard_page(reporting_service, location_service):
             pass
         else:
             st.info("Seleccione una parcela a la izquierda para ver detalles.")
+
+
+def _get_plot_history(agronomy_service: Optional[Any], plot_id: int) -> pd.DataFrame:
+    """
+    Obtiene el historial de aplicaciones de una parcela.
+    
+    Usa el servicio de agronomía si está disponible, de lo contrario
+    retorna un DataFrame vacío con las columnas esperadas.
+    
+    Args:
+        agronomy_service: AgronomyDomainService (opcional)
+        plot_id: ID de la parcela
+        
+    Returns:
+        DataFrame con application_date, nitrogen_load_applied, total_tonnage_applied
+    """
+    if agronomy_service and hasattr(agronomy_service, 'get_plot_application_history'):
+        try:
+            history_data = agronomy_service.get_plot_application_history(plot_id)
+            if history_data:
+                return pd.DataFrame(history_data)
+        except Exception as e:
+            st.warning(f"Error al obtener historial: {e}")
+    
+    # Return empty DataFrame with expected columns
+    return pd.DataFrame(columns=['application_date', 'nitrogen_load_applied', 'total_tonnage_applied'])

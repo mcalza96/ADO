@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import datetime
 from domain.logistics.entities.load_status import LoadStatus
-from ui.components.assignment_form import render_assignment_sidebar
+from ui.components.assignment_form import render_assignment_form
+from ui.presenters.planning_presenter import PlanningPresenter
 
 def planning_page(logistics_service, contractor_service, driver_service, vehicle_service, location_service, treatment_plant_service):
     st.title("🗓️ Tablero de Planificación (Control Tower)")
@@ -18,21 +19,14 @@ def planning_page(logistics_service, contractor_service, driver_service, vehicle
         if not requested_loads:
             st.info("No hay solicitudes pendientes de planificación.")
         else:
-            df = pd.DataFrame(requested_loads)
-            
-            # Rename for display
-            df = df.rename(columns={
-                'id': 'ID',
-                'created_at': 'Fecha Solicitud', # Using created_at as proxy for requested_date if not present
-                'origin_facility_name': 'Origen',
-                'status': 'Estado'
-            })
+            # Usar Presenter para transformar datos
+            df = PlanningPresenter.format_backlog_loads(requested_loads)
             
             # Interactive Grid
             st.markdown("### Selecciona cargas para asignar")
             event = st.dataframe(
-                df[['ID', 'Fecha Solicitud', 'Origen', 'Estado']],
-                use_container_width=True,
+                df,
+                width="stretch",
                 hide_index=True,
                 on_select="rerun",
                 selection_mode="multi-row",
@@ -41,18 +35,21 @@ def planning_page(logistics_service, contractor_service, driver_service, vehicle
 
             selected_rows = event.selection.rows
             
-            # --- Assignment Form (Sidebar) ---
+            # --- Assignment Form (Inline - debajo del grid) ---
             if selected_rows:
-                selected_indices = selected_rows
-                selected_ids = df.iloc[selected_indices]["ID"].tolist()
+                selected_ids = PlanningPresenter.get_selected_load_ids(df, selected_rows)
                 
-                assignment_request = render_assignment_sidebar(
+                # Obtener restricción de vehículos del origen
+                origin_vehicle_restriction = PlanningPresenter.get_origin_vehicle_restriction(df, selected_rows)
+                
+                assignment_request = render_assignment_form(
                     selected_ids,
                     contractor_service,
                     driver_service,
                     vehicle_service,
                     location_service,
-                    treatment_plant_service
+                    treatment_plant_service,
+                    origin_allowed_vehicle_types=origin_vehicle_restriction
                 )
                 
                 if assignment_request:
@@ -61,11 +58,11 @@ def planning_page(logistics_service, contractor_service, driver_service, vehicle
                             load_ids=assignment_request.load_ids,
                             driver_id=assignment_request.driver_id,
                             vehicle_id=assignment_request.vehicle_id,
-                            scheduled_date=assignment_request.scheduled_date,
+                            scheduled_date=assignment_request.get_scheduled_datetime(),
                             site_id=assignment_request.site_id,
                             treatment_plant_id=assignment_request.treatment_plant_id
                         )
-                        st.success(f"Se programaron {len(assignment_request.load_ids)} cargas exitosamente.")
+                        st.success(f"Se programaron {len(assignment_request.load_ids)} cargas exitosamente para las {assignment_request.scheduled_time.strftime('%H:%M')}.")
                         st.rerun()
                     except Exception as e:
                         st.error(f"Error asignando cargas: {e}")
@@ -78,23 +75,10 @@ def planning_page(logistics_service, contractor_service, driver_service, vehicle
         if not scheduled_loads:
             st.info("No hay cargas programadas.")
         else:
-            df_sched = pd.DataFrame(scheduled_loads)
-            
-            # Rename for display
-            df_sched = df_sched.rename(columns={
-                'id': 'ID',
-                'scheduled_date': 'Fecha Programada',
-                'origin_facility_name': 'Origen',
-                'contractor_name': 'Transportista',
-                'vehicle_plate': 'Patente',
-                'driver_name': 'Conductor',
-                'status': 'Estado'
-            })
-            
-            # Handle destination
-            df_sched['Destino'] = df_sched.apply(lambda x: x['destination_site_name'] if pd.notna(x['destination_site_name']) else x['destination_plant_name'], axis=1)
+            # Usar Presenter para transformar datos
+            df_sched = PlanningPresenter.format_scheduled_loads(scheduled_loads)
             
             st.dataframe(
-                df_sched[['ID', 'Fecha Programada', 'Origen', 'Destino', 'Transportista', 'Patente', 'Conductor', 'Estado']],
-                use_container_width=True
+                df_sched,
+                width="stretch"
             )

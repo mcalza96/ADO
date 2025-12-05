@@ -35,13 +35,14 @@ class ReportingRepository:
                 COALESCE(l.guide_number, '') as guide_number,
                 v.license_plate,
                 d.name as driver_name,
-                f.name as facility_name,
+                COALESCE(f.name, otp.name) as facility_name,
                 s.name as site_name,
                 l.destination_site_id
             FROM loads l
             LEFT JOIN vehicles v ON l.vehicle_id = v.id
             LEFT JOIN drivers d ON l.driver_id = d.id
             LEFT JOIN facilities f ON l.origin_facility_id = f.id
+            LEFT JOIN treatment_plants otp ON l.origin_treatment_plant_id = otp.id
             LEFT JOIN sites s ON l.destination_site_id = s.id
             WHERE l.status IN ('Dispatched', 'Arrived', 'IN_TRANSIT', 'ARRIVED')
             ORDER BY l.dispatch_time DESC

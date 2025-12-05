@@ -14,7 +14,6 @@ import streamlit as st
 from types import SimpleNamespace
 from database.db_manager import DatabaseManager
 from domain.logistics.repositories.load_repository import LoadRepository
-from domain.processing.repositories.batch_repository import BatchRepository
 from repositories.reporting_repository import ReportingRepository
 from database.repository import BaseRepository
 
@@ -33,12 +32,13 @@ from domain.logistics.entities.container import Container
 
 from domain.disposal.services.location_service import LocationService
 from domain.logistics.services.dispatch_service import LogisticsDomainService
+from domain.logistics.services.pickup_request_service import PickupRequestService
 from domain.disposal.services.agronomy_service import AgronomyDomainService
 from domain.shared.services.auth_service import AuthService
 from services.operations.manifest_service import ManifestService
+from services.operations.container_tracking_service import ContainerTrackingService
 from domain.shared.services.compliance_service import ComplianceService
 from domain.processing.services.reception_service import TreatmentReceptionService
-from domain.processing.services.batch_service import TreatmentBatchService
 from domain.shared.generic_crud_service import GenericCrudService
 from domain.disposal.services.disposal_master_service import DisposalService as MasterDisposalService
 from domain.processing.services.treatment_master_service import TreatmentService
@@ -101,29 +101,26 @@ def get_container() -> SimpleNamespace:
     
     # Specific Repositories (Custom SQL or Logic)
     load_repo = LoadRepository(db_manager)
-    batch_repo = BatchRepository(db_manager)
     reporting_repo = ReportingRepository(db_manager)
     machine_log_repo = MachineLogRepository(db_manager)
     
     # Initialize Services with dependency injection
     location_service = LocationService(site_repo, plot_repo)
-    batch_service = TreatmentBatchService(db_manager)
     
     # Compliance Service (needed for Manifest and Validation)
     compliance_service = ComplianceService(
-        site_repo, load_repo, batch_repo, application_repo
+        site_repo, load_repo, application_repo
     )
     
     # Agronomy Domain Service
     agronomy_service = AgronomyDomainService(db_manager, compliance_service)
     
     # Manifest Service
-    manifest_service = ManifestService(db_manager, batch_service, compliance_service)
+    manifest_service = ManifestService(db_manager, compliance_service)
 
     # Logistics Domain Service
     logistics_service = LogisticsDomainService(
         db_manager,
-        batch_service,
         compliance_service,
         agronomy_service,
         manifest_service,
@@ -156,18 +153,18 @@ def get_container() -> SimpleNamespace:
     event_bus.subscribe(EventTypes.LOAD_STATUS_CHANGED, costing_listener.handle_load_completed)
     event_bus.subscribe(EventTypes.MACHINE_WORK_RECORDED, costing_listener.handle_machine_work)
     
+    # Master Disposal Service - debe crearse antes del alias
+    master_disposal_service = MasterDisposalService(db_manager)
+    
     # Aliases for backward compatibility (if needed during transition)
     dispatch_service = logistics_service
     reception_service = logistics_service
-    disposal_service = agronomy_service
+    disposal_service = master_disposal_service  # Usar MasterDisposalService que tiene register_arrival
     site_prep_service = agronomy_service
     nitrogen_app_service = agronomy_service
     
     # Treatment Reception Service
     treatment_reception_service = TreatmentReceptionService(db_manager)
-    
-    # Treatment Batch Service (for DS4 monitoring)
-    treatment_batch_service = TreatmentBatchService(db_manager)
     
     # Master Services (using GenericCrudService)
     client_service = GenericCrudService(client_repo)
@@ -175,9 +172,8 @@ def get_container() -> SimpleNamespace:
     contractor_service = GenericCrudService(contractor_repo)
     driver_service = GenericCrudService(driver_repo)
     vehicle_service = GenericCrudService(vehicle_repo)
-    treatment_plant_service = GenericCrudService(BaseRepository(db_manager, TreatmentPlant, "facilities"))
+    treatment_plant_service = GenericCrudService(BaseRepository(db_manager, TreatmentPlant, "treatment_plants"))
     container_service = GenericCrudService(BaseRepository(db_manager, Container, "containers"))
-    master_disposal_service = MasterDisposalService(db_manager)
     treatment_service = TreatmentService(db_manager)
     
     # Reporting Service
@@ -188,6 +184,12 @@ def get_container() -> SimpleNamespace:
     
     # Auth Service
     auth_service = AuthService(user_repo)
+    
+    # Pickup Request Service (Client requests)
+    pickup_request_service = PickupRequestService(db_manager, facility_repo)
+
+    # Container Tracking Service (DS4 container filling with pH measurements)
+    container_tracking_service = ContainerTrackingService(db_manager)
 
     # Task Resolver (UI Service)
     task_resolver = TaskResolver(load_repo, machine_log_repo)
@@ -202,8 +204,6 @@ def get_container() -> SimpleNamespace:
         dispatch_service=dispatch_service,
         site_prep_service=site_prep_service,
         manifest_service=manifest_service,
-        batch_service=batch_service,
-        treatment_batch_service=treatment_batch_service,
         reception_service=reception_service,
         logistics_service=logistics_service,
         treatment_reception_service=treatment_reception_service,
@@ -224,4 +224,6 @@ def get_container() -> SimpleNamespace:
         agronomy_service=agronomy_service,
         machinery_service=machinery_service,  # New service
         task_resolver=task_resolver,
+        pickup_request_service=pickup_request_service,  # Client pickup requests
+        container_tracking_service=container_tracking_service,  # DS4 container tracking
     )

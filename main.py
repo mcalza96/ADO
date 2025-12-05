@@ -1,4 +1,5 @@
 import streamlit as st
+from ui.state import AppState
 from ui.auth.login import login_page
 from ui.config_view import config_page
 from ui.requests_view import requests_page
@@ -50,42 +51,18 @@ def run_migrations():
 from container import get_container
 
 def main():
-    # Initialize session state for user
-    if 'user' not in st.session_state:
-        st.session_state['user'] = None
+    # Initialize session state for user using AppState
+    AppState.init_if_missing(AppState.USER, None)
 
     # Check if user is logged in
-    if st.session_state['user'] is None:
+    if AppState.get(AppState.USER) is None:
         login_page()
     else:
         # Main App Layout
-        user = st.session_state['user']
+        user = AppState.get(AppState.USER)
         
-        # Get Services from Container
-        services = get_container()
-        
-        # Extract all services needed for different modules
-        treatment_plant_service = services.treatment_plant_service
-        client_service = services.client_service
-        facility_service = services.facility_service
-        contractor_service = services.contractor_service
-        container_service = services.container_service
-        location_service = services.location_service
-        driver_service = services.driver_service
-        vehicle_service = services.vehicle_service
-        auth_service = services.auth_service
-        logistics_service = services.logistics_service
-        dispatch_service = services.dispatch_service
-        reporting_service = services.reporting_service
-        treatment_service = services.treatment_service
-        batch_service = services.batch_service
-        treatment_reception_service = services.treatment_reception_service
-        master_disposal_service = services.master_disposal_service
-        disposal_service = services.disposal_service
-        treatment_batch_service = services.treatment_batch_service
-        dashboard_service = services.dashboard_service
-        site_prep_service = services.site_prep_service
-        reception_service = services.reception_service
+        # Get Services Container (single source of truth)
+        container = get_container()
         
         # Sidebar Navigation
         with st.sidebar:
@@ -94,22 +71,26 @@ def main():
             st.divider()
             
             # Nuevo Menú Simplificado
-            menu_options = ["Mi Bandeja (Inbox)", "Dashboard", "Operaciones", "Reportes", "Configuración"]
+            menu_options = ["Mi Bandeja (Inbox)", "Dashboard", "Solicitudes", "Operaciones", "Reportes", "Configuración"]
             selection = st.radio("Navegación", menu_options)
             
             st.divider()
             
             if st.button("Logout"):
-                st.session_state['user'] = None
+                AppState.clear(AppState.USER)
                 st.rerun()
 
-        # Router Principal
+        # Router Principal - Usando container completo para eliminar prop drilling
         if selection == "Mi Bandeja (Inbox)":
-            # Pasamos el usuario real de la sesión
-            inbox_page(user_role=user.role, user_id=user.id)
+            # Pasamos container y usuario (DI correcto)
+            inbox_page(container=container, user_role=user.role, user_id=user.id)
             
         elif selection == "Dashboard":
-            dashboard_page(dashboard_service)
+            dashboard_page(container.dashboard_service)
+        
+        elif selection == "Solicitudes":
+            # Client pickup requests - pasamos container completo
+            requests_page(container=container)
             
         elif selection == "Operaciones":
             # Sub-navigation for Operations
@@ -139,7 +120,7 @@ def main():
                         selected_item = menu_options[selected_option]
                         try:
                             # Call the page function with container
-                            selected_item.page_func(services)
+                            selected_item.page_func(container)
                         except Exception as e:
                             st.error(f"Error al cargar la página: {str(e)}")
                             st.exception(e)
@@ -148,23 +129,10 @@ def main():
                     st.info("Verifica que el módulo ui.modules.logistics esté importado correctamente")
                 
             elif ops_menu == "🏭 Tratamiento (Planta)":
-                treatment_operations_page(
-                    treatment_plant_service=treatment_plant_service,
-                    treatment_reception_service=treatment_reception_service,
-                    batch_service=treatment_service,  # Use TreatmentService for batches
-                    container_service=container_service,
-                    treatment_batch_service=treatment_batch_service,
-                    logistics_service=logistics_service
-                )
+                treatment_operations_page(container)
                 
             elif ops_menu == "🌾 Disposición Final (Agro)":
-                disposal_operations_page(
-                    disposal_service=disposal_service,
-                    location_service=location_service,
-                    driver_service=driver_service,
-                    treatment_plant_service=treatment_plant_service,
-                    site_prep_service=site_prep_service
-                )
+                disposal_operations_page(container=container)
             
         elif selection == "Reportes":
             # Sub-navigation for Reportes
@@ -174,24 +142,14 @@ def main():
             )
             
             if report_menu == "Torre de Control (Logística)":
-                logistics_dashboard_page(reporting_service)
+                logistics_dashboard_page(container.reporting_service)
             elif report_menu == "Drill-Down Agronómico":
-                agronomy_dashboard_page(reporting_service, location_service)
+                agronomy_dashboard_page(container.reporting_service, container.location_service, container.agronomy_service)
             elif report_menu == "Vista Cliente (Simulada)":
-                client_portal_page(reporting_service)
+                client_portal_page(container.reporting_service)
                 
         elif selection == "Configuración":
-            config_page(
-                client_service=client_service,
-                facility_service=facility_service,
-                contractor_service=contractor_service,
-                treatment_plant_service=treatment_plant_service,
-                container_service=container_service,
-                location_service=location_service,
-                driver_service=driver_service,
-                vehicle_service=vehicle_service,
-                auth_service=auth_service
-            )
+            config_page(container)
 
 if __name__ == "__main__":
     run_migrations()

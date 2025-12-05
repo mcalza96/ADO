@@ -12,6 +12,7 @@ class LoadRepository(BaseRepository[Load]):
     def _map_row_to_model(self, row: dict) -> Load:
         """
         Override to handle datetime conversion from SQLite strings.
+        Also ensures weight_net alias is populated from net_weight.
         """
         data = dict(row)
         
@@ -25,6 +26,10 @@ class LoadRepository(BaseRepository[Load]):
                 except ValueError:
                     # Fallback or log error
                     pass
+        
+        # Ensure weight_net alias is populated from net_weight
+        if 'net_weight' in data and data['net_weight'] is not None:
+            data['weight_net'] = data['net_weight']
                     
         return super()._map_row_to_model(data)
 
@@ -100,6 +105,78 @@ class LoadRepository(BaseRepository[Load]):
             rows = cursor.fetchall()
             return [self._map_row_to_model(dict(row)) for row in rows]
 
+    def get_assigned_loads_by_vehicle(self, vehicle_id: int) -> List[Load]:
+        """
+        Returns loads with status ASSIGNED or ACCEPTED for a specific vehicle.
+        
+        Used by the driver dispatch view to show trips assigned to their vehicle.
+        
+        Args:
+            vehicle_id: ID of the vehicle to filter by
+            
+        Returns:
+            List of loads assigned to the vehicle
+        """
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"""SELECT * FROM {self.table_name} 
+                    WHERE vehicle_id = ? 
+                    AND status IN (?, ?) 
+                    ORDER BY scheduled_date ASC, created_at ASC""",
+                (vehicle_id, LoadStatus.ASSIGNED.value, LoadStatus.ACCEPTED.value)
+            )
+            rows = cursor.fetchall()
+            return [self._map_row_to_model(dict(row)) for row in rows]
+
+    def get_in_transit_loads_by_destination_site(self, site_id: int) -> List[Load]:
+        """
+        Returns loads in transit (EN_ROUTE_DESTINATION) heading to a specific disposal site.
+        
+        Used by disposal reception to show incoming trucks.
+        
+        Args:
+            site_id: ID of the destination site
+            
+        Returns:
+            List of loads in transit to the site
+        """
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"""SELECT * FROM {self.table_name} 
+                    WHERE destination_site_id = ? 
+                    AND status = ? 
+                    ORDER BY dispatch_time ASC""",
+                (site_id, LoadStatus.EN_ROUTE_DESTINATION.value)
+            )
+            rows = cursor.fetchall()
+            return [self._map_row_to_model(dict(row)) for row in rows]
+
+    def get_in_transit_loads_by_treatment_plant(self, plant_id: int) -> List[Load]:
+        """
+        Returns loads in transit (EN_ROUTE_DESTINATION) heading to a specific treatment plant.
+        
+        Used by treatment reception to show incoming trucks.
+        
+        Args:
+            plant_id: ID of the destination treatment plant
+            
+        Returns:
+            List of loads in transit to the plant
+        """
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"""SELECT * FROM {self.table_name} 
+                    WHERE destination_treatment_plant_id = ? 
+                    AND status = ? 
+                    ORDER BY dispatch_time ASC""",
+                (plant_id, LoadStatus.EN_ROUTE_DESTINATION.value)
+            )
+            rows = cursor.fetchall()
+            return [self._map_row_to_model(dict(row)) for row in rows]
+
     def get_delivered_by_destination_type(self, destination_type: str, destination_id: int) -> List[Load]:
         """
         Returns loads that have been delivered (AT_DESTINATION or COMPLETED status) filtered by destination type and ID.
@@ -147,16 +224,21 @@ class LoadRepository(BaseRepository[Load]):
                 l.status,
                 l.scheduled_date,
                 l.created_at,
-                l.weight_net,
+                l.net_weight as weight_net,
+                l.origin_facility_id,
+                l.origin_treatment_plant_id,
+                l.vehicle_type_requested,
                 v.license_plate as vehicle_plate,
                 d.name as driver_name,
-                f.name as origin_facility_name,
+                COALESCE(f.name, otp.name) as origin_facility_name,
+                COALESCE(f.allowed_vehicle_types, l.vehicle_type_requested) as origin_allowed_vehicle_types,
                 s.name as destination_site_name,
                 tp.name as destination_plant_name
             FROM loads l
             LEFT JOIN vehicles v ON l.vehicle_id = v.id
             LEFT JOIN drivers d ON l.driver_id = d.id
             LEFT JOIN facilities f ON l.origin_facility_id = f.id
+            LEFT JOIN treatment_plants otp ON l.origin_treatment_plant_id = otp.id
             LEFT JOIN sites s ON l.destination_site_id = s.id
             LEFT JOIN facilities tp ON l.destination_treatment_plant_id = tp.id
             WHERE 1=1

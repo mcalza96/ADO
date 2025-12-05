@@ -1,7 +1,15 @@
+"""
+Client Portal - Vista de portal para clientes.
+
+Refactorizado para:
+- Recibir reporting_service como dependencia inyectada correctamente
+- Eliminar import directo de get_container
+"""
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
-from container import get_container
+
 
 def client_portal_page(reporting_service):
     st.header("Portal de Cliente")
@@ -62,7 +70,7 @@ def client_portal_page(reporting_service):
     # Display Configuration
     st.dataframe(
         df_display,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "Fecha Despacho": st.column_config.DatetimeColumn(format="DD/MM/YYYY HH:mm"),

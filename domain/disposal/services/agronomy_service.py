@@ -86,3 +86,24 @@ class AgronomyDomainService:
             return load
         else:
             raise Exception("Failed to update load in database")
+
+    def get_plot_application_history(self, plot_id: int) -> List[Dict]:
+        """
+        Retrieves nitrogen application history for a specific plot.
+        
+        Args:
+            plot_id: ID of the plot
+            
+        Returns:
+            List of dicts with application_date, nitrogen_load_applied, total_tonnage_applied
+        """
+        query = """
+            SELECT application_date, nitrogen_load_applied, total_tonnage_applied
+            FROM applications
+            WHERE plot_id = ?
+            ORDER BY application_date DESC
+        """
+        with self.db_manager as conn:
+            cursor = conn.execute(query, (plot_id,))
+            columns = [desc[0] for desc in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]

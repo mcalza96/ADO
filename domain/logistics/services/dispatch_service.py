@@ -7,13 +7,13 @@ from domain.logistics.repositories.status_transition_repository import StatusTra
 from domain.logistics.entities.load import Load
 from domain.logistics.entities.load_status import LoadStatus
 from domain.logistics.entities.status_transition import StatusTransition
-from domain.logistics.entities.vehicle import Vehicle
+from domain.logistics.entities.vehicle import Vehicle, VehicleType
 from domain.logistics.entities.container import Container
 from domain.logistics.services.transition_rules import (
     get_validators_for_transition,
     is_valid_transition,
 )
-from domain.processing.services.batch_service import TreatmentBatchService
+from domain.processing.entities.facility import Facility
 from domain.shared.services.compliance_service import ComplianceService
 from domain.disposal.services.agronomy_service import AgronomyDomainService
 from services.operations.manifest_service import ManifestService
@@ -33,7 +33,6 @@ class LogisticsDomainService:
     def __init__(
         self,
         db_manager: DatabaseManager,
-        batch_service: TreatmentBatchService,
         compliance_service: ComplianceService,
         agronomy_service: AgronomyDomainService,
         manifest_service: ManifestService,
@@ -44,25 +43,38 @@ class LogisticsDomainService:
         self.transition_repo = StatusTransitionRepository(db_manager)
         self.vehicle_repo = BaseRepository(db_manager, Vehicle, "vehicles")
         self.container_repo = BaseRepository(db_manager, Container, "containers")
+        self.facility_repo = BaseRepository(db_manager, Facility, "facilities")
         
-        self.batch_service = batch_service
-        self.treatment_batch_service = TreatmentBatchService(db_manager)
         self.compliance_service = compliance_service
         self.agronomy_service = agronomy_service
         self.manifest_service = manifest_service
         self.event_bus = event_bus  # Nuevo
 
     # --- Planning Phase ---
-    def create_request(self, facility_id: Optional[int], requested_date: datetime, plant_id: Optional[int] = None) -> Load:
+    def create_request(self, facility_id: Optional[int], requested_date: datetime, plant_id: Optional[int] = None, 
+                       weight_estimated: Optional[float] = None, notes: Optional[str] = None) -> Load:
         load = Load(
             id=None,
             origin_facility_id=facility_id,
             origin_treatment_plant_id=plant_id,
             status=LoadStatus.REQUESTED.value,
             requested_date=requested_date,
+            weight_net=weight_estimated,
+            notes=notes,
             created_at=datetime.now()
         )
         return self.load_repo.add(load)
+    
+    # Alias for UI compatibility
+    def create_load_request(self, origin_facility_id: int, requested_date: datetime, 
+                            weight_estimated: float = None, notes: str = None) -> Load:
+        """Alias for create_request - used by planning UI."""
+        return self.create_request(
+            facility_id=origin_facility_id, 
+            requested_date=requested_date,
+            weight_estimated=weight_estimated,
+            notes=notes
+        )
 
     def schedule_load(self, load_id: int, driver_id: int, vehicle_id: int, scheduled_date: datetime, 
                          site_id: Optional[int] = None, treatment_plant_id: Optional[int] = None, 
@@ -76,6 +88,10 @@ class LogisticsDomainService:
             
         if load.status != LoadStatus.REQUESTED.value:
             raise TransitionException(f"Cannot schedule load. Current status: {load.status}. Expected: '{LoadStatus.REQUESTED.value}'.")
+        
+        # Validate vehicle type is allowed for the origin facility
+        if load.origin_facility_id:
+            self._validate_vehicle_type_for_facility(vehicle_id, load.origin_facility_id)
         
         load.driver_id = driver_id
         load.vehicle_id = vehicle_id
@@ -108,6 +124,44 @@ class LogisticsDomainService:
 
 
     # --- Dispatch Phase (Gate Out) ---
+    def _validate_vehicle_type_for_facility(self, vehicle_id: int, facility_id: int) -> None:
+        """
+        Valida que el tipo de vehículo esté permitido en la planta de origen.
+        
+        Regla de negocio:
+        - BATEA: Carga directa, 1 viaje = 1 carga
+        - AMPLIROLL: Trabaja con contenedores, puede llevar hasta 2
+        """
+        if not facility_id:
+            return  # Skip validation if no facility
+            
+        vehicle = self.vehicle_repo.get_by_id(vehicle_id)
+        facility = self.facility_repo.get_by_id(facility_id)
+        
+        if not vehicle or not facility:
+            return  # Skip if entities not found
+        
+        allowed_types = facility.allowed_vehicle_types
+        if not allowed_types:
+            return  # No restrictions configured
+        
+        # Parse allowed types from CSV string
+        allowed_list = VehicleType.from_csv(allowed_types)
+        
+        # Get vehicle type enum
+        try:
+            vehicle_type = VehicleType(vehicle.type) if vehicle.type else VehicleType.BATEA
+        except ValueError:
+            vehicle_type = VehicleType.BATEA  # Default fallback
+        
+        if vehicle_type not in allowed_list:
+            allowed_names = ", ".join([vt.display_name for vt in allowed_list])
+            raise ValueError(
+                f"🚫 Tipo de vehículo no permitido: El vehículo {vehicle.license_plate} "
+                f"es tipo '{vehicle_type.display_name}', pero la planta '{facility.name}' "
+                f"solo permite: {allowed_names}"
+            )
+
     def _validate_capacity(self, vehicle_id: int, container_id: Optional[int]) -> None:
         if not container_id:
             return 
@@ -124,7 +178,6 @@ class LogisticsDomainService:
 
     def dispatch_truck(
         self,
-        batch_id: int,
         driver_id: int,
         vehicle_id: int,
         destination_site_id: int,
@@ -134,30 +187,22 @@ class LogisticsDomainService:
         container_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
-        Dispatches a truck (Sprint 2 / Legacy Flow).
+        Dispatches a truck (simplified flow without batch management).
         """
+        # Validate vehicle type is allowed for this facility
+        self._validate_vehicle_type_for_facility(vehicle_id, origin_facility_id)
         self._validate_capacity(vehicle_id, container_id)
-        
-        # Validation
-        available = self.batch_service.get_batch_balance(batch_id)
-        if weight_net > available:
-            raise ValueError(f"Stock insuficiente. Disponible: {available} kg, Solicitado: {weight_net} kg")
             
         vehicle = self.vehicle_repo.get_by_id(vehicle_id)
-        if weight_net > vehicle.max_capacity:
-            raise ValueError(f"Peso excede capacidad del vehículo.")
-            
-        try:
-            self.compliance_service.validate_dispatch(batch_id, destination_site_id, weight_net)
-        except ComplianceViolationError as e:
-            raise ValueError(f"🚫 OPERACIÓN BLOQUEADA: {str(e)}")
+        if vehicle and hasattr(vehicle, 'max_capacity') and vehicle.max_capacity:
+            if weight_net > vehicle.max_capacity:
+                raise ValueError(f"Peso excede capacidad del vehículo.")
 
         with self.db_manager as conn:
             load = Load(
                 id=None,
                 origin_facility_id=origin_facility_id,
                 destination_site_id=destination_site_id,
-                batch_id=batch_id,
                 driver_id=driver_id,
                 vehicle_id=vehicle_id,
                 container_id=container_id,
@@ -169,15 +214,15 @@ class LogisticsDomainService:
             )
             
             created_load = self.load_repo.create_load(load)
-            self.treatment_batch_service.reserve_stock(batch_id, weight_net)
             
-            # Register Nitrogen
-            self.agronomy_service.register_nitrogen_application(
-                site_id=destination_site_id,
-                load_id=created_load.id,
-                batch_id=batch_id,
-                weight_net=weight_net
-            )
+            # Register Nitrogen if destination site is provided
+            if destination_site_id:
+                self.agronomy_service.register_nitrogen_application(
+                    site_id=destination_site_id,
+                    load_id=created_load.id,
+                    batch_id=None,
+                    weight_net=weight_net
+                )
             
             manifest_path = self.manifest_service.generate_manifest(created_load.id)
             
@@ -193,8 +238,7 @@ class LogisticsDomainService:
         if not load or load.status != LoadStatus.ASSIGNED.value:
             raise ValueError("Invalid load or status")
         load.status = LoadStatus.ACCEPTED.value
-        load.sync_status = 'PENDING'
-        load.last_updated_local = datetime.now()
+        load.updated_at = datetime.now()
         return self.load_repo.update(load)
 
     def start_trip(self, load_id: int) -> bool:
@@ -203,8 +247,7 @@ class LogisticsDomainService:
             raise ValueError("Invalid load or status")
         load.status = LoadStatus.EN_ROUTE_DESTINATION.value
         load.dispatch_time = datetime.now()
-        load.sync_status = 'PENDING'
-        load.last_updated_local = datetime.now()
+        load.updated_at = datetime.now()
         return self.load_repo.update(load)
 
     # --- Reception Phase (Gate In) ---
@@ -262,6 +305,48 @@ class LogisticsDomainService:
     def get_assignable_loads(self, vehicle_id: int) -> List[Load]:
         """Get loads assignable to a vehicle."""
         return self.load_repo.get_assignable_loads(vehicle_id)
+    
+    def get_assigned_loads_by_vehicle(self, vehicle_id: int) -> List[Load]:
+        """
+        Get loads assigned (ASSIGNED or ACCEPTED) to a specific vehicle.
+        
+        Used by the driver dispatch view to show trips assigned to their vehicle.
+        
+        Args:
+            vehicle_id: ID of the vehicle to filter by
+            
+        Returns:
+            List of loads assigned to the vehicle
+        """
+        return self.load_repo.get_assigned_loads_by_vehicle(vehicle_id)
+    
+    def get_in_transit_loads_by_destination_site(self, site_id: int) -> List[Load]:
+        """
+        Get loads in transit heading to a specific disposal site.
+        
+        Used by disposal reception to show incoming trucks.
+        
+        Args:
+            site_id: ID of the destination site
+            
+        Returns:
+            List of loads in transit to the site
+        """
+        return self.load_repo.get_in_transit_loads_by_destination_site(site_id)
+    
+    def get_in_transit_loads_by_treatment_plant(self, plant_id: int) -> List[Load]:
+        """
+        Get loads in transit heading to a specific treatment plant.
+        
+        Used by treatment reception to show incoming trucks.
+        
+        Args:
+            plant_id: ID of the destination treatment plant
+            
+        Returns:
+            List of loads in transit to the plant
+        """
+        return self.load_repo.get_in_transit_loads_by_treatment_plant(plant_id)
     
     def get_active_load(self, vehicle_id: int) -> Optional[Load]:
         """Get active load for a vehicle."""

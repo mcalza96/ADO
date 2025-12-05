@@ -1,7 +1,23 @@
-import streamlit as st
-from container import get_container
+"""
+Login Page - Autenticación de usuarios.
 
-def login_page():
+Refactorizado para:
+- Usar AppState para manejo de session state
+- Recibir auth_service como dependencia inyectada
+"""
+
+import streamlit as st
+from ui.state import AppState
+
+
+def login_page(auth_service=None):
+    """
+    Página de login.
+    
+    Args:
+        auth_service: Servicio de autenticación. Si no se proporciona,
+                     se obtiene del container (compatibilidad hacia atrás).
+    """
     st.title("Biosolids ERP - Login")
     
     with st.form("login_form"):
@@ -10,11 +26,15 @@ def login_page():
         submitted = st.form_submit_button("Login")
         
         if submitted:
-            services = get_container()
-            user = services.auth_service.authenticate(username, password)
+            # Obtener auth_service si no fue inyectado (compatibilidad)
+            if auth_service is None:
+                from container import get_container
+                auth_service = get_container().auth_service
+                
+            user = auth_service.authenticate(username, password)
             
             if user:
-                st.session_state['user'] = user
+                AppState.set(AppState.USER, user)
                 st.success(f"Welcome {user.full_name}!")
                 st.rerun()
             else:

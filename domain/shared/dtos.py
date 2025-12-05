@@ -66,6 +66,13 @@ class AssignmentRequest:
     driver_id: Optional[int]
     vehicle_id: Optional[int]
     scheduled_date: datetime.date
+    scheduled_time: Optional[datetime.time] = None  # Hora planificada de retiro
     site_id: Optional[int] = None
     treatment_plant_id: Optional[int] = None
+    
+    def get_scheduled_datetime(self) -> datetime.datetime:
+        """Combina fecha y hora en un datetime completo."""
+        if self.scheduled_time:
+            return datetime.datetime.combine(self.scheduled_date, self.scheduled_time)
+        return datetime.datetime.combine(self.scheduled_date, datetime.time(8, 0))  # Default 8:00 AM
 

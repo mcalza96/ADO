@@ -1,37 +1,31 @@
 import streamlit as st
-from ui.masters import containers_view, transport_view, locations_view
+from ui.masters import containers_view, transport_view, locations_view, security_view
 from ui.generic_master_view import GenericMasterView, FieldConfig
 from domain.shared.entities.client import Client
 from domain.processing.entities.treatment_plant import TreatmentPlant
 from domain.processing.entities.facility import Facility
+from domain.logistics.entities.vehicle import VehicleType
 
 
-def config_page(
-    client_service,
-    facility_service,
-    contractor_service,
-    treatment_plant_service,
-    container_service,
-    location_service,
-    driver_service,
-    vehicle_service,
-    auth_service
-):
+def config_page(container):
     """
     Orquestador de vistas de configuración de maestros.
-    Recibe todos los servicios necesarios y los distribuye a las sub-vistas.
+    Recibe el container de servicios y los distribuye a las sub-vistas.
     
     Args:
-        client_service: ClientService instance
-        facility_service: FacilityService instance
-        contractor_service: ContractorService instance
-        treatment_plant_service: TreatmentPlantService instance
-        container_service: ContainerService instance
-        location_service: LocationService instance
-        driver_service: DriverService instance
-        vehicle_service: VehicleService instance
-        auth_service: AuthService instance
+        container: SimpleNamespace con todos los servicios inyectados
     """
+    # Extract services from container
+    client_service = container.client_service
+    facility_service = container.facility_service
+    contractor_service = container.contractor_service
+    treatment_plant_service = container.treatment_plant_service
+    container_service = container.container_service
+    location_service = container.location_service
+    driver_service = container.driver_service
+    vehicle_service = container.vehicle_service
+    auth_service = container.auth_service
+    
     st.title("⚙️ Configuración del Sistema")
     
     # Main configuration tabs
@@ -91,22 +85,39 @@ def config_page(
                     "longitude": FieldConfig(label="Longitud", widget="number_input"),
                     "allowed_vehicle_types": FieldConfig(
                         label="Tipos de Vehículos Permitidos",
-                        help="Ej: BATEA,AMPLIROLL"
+                        widget="multiselect",
+                        options=VehicleType.choices(),
+                        help="Seleccione los tipos de vehículos que pueden operar en esta planta"
                     )
                 }
             ).render()
         
         with sub_tab_plants:
-            # Use GenericMasterView for Treatment Plants
+            # Use GenericMasterView for Treatment Plants (own processing plants)
             GenericMasterView(
                 service=treatment_plant_service,
                 model_class=TreatmentPlant,
-                title="Plantas de Tratamiento",
-                display_columns=["name", "address", "state_permit_number"],
+                title="Plantas de Tratamiento (Propias)",
+                display_columns=["name", "address", "authorization_resolution", "state_permit_number"],
                 form_config={
                     "name": FieldConfig(label="Nombre de Planta", required=True),
-                    "address": FieldConfig(label="Dirección"),
-                    "state_permit_number": FieldConfig(label="Nº Permiso Sanitario")
+                    "address": FieldConfig(label="Dirección", widget="text_area"),
+                    "latitude": FieldConfig(label="Latitud", widget="number_input"),
+                    "longitude": FieldConfig(label="Longitud", widget="number_input"),
+                    "authorization_resolution": FieldConfig(
+                        label="Resolución de Autorización",
+                        help="Número de resolución sanitaria de autorización"
+                    ),
+                    "state_permit_number": FieldConfig(
+                        label="Nº Permiso Estatal",
+                        help="Número de permiso otorgado por el estado"
+                    ),
+                    "allowed_vehicle_types": FieldConfig(
+                        label="Tipos de Vehículos Permitidos",
+                        widget="multiselect",
+                        options=VehicleType.choices(),
+                        help="Seleccione los tipos de vehículos que pueden operar"
+                    )
                 }
             ).render()
     
@@ -115,7 +126,7 @@ def config_page(
     # ==========================================
     with tab_transporte:
         # Use refactored transport_view with dependency injection
-        transport_view.render(driver_service, vehicle_service, contractor_service)
+        transport_view.render(driver_service, vehicle_service, contractor_service, container_service)
     
     # ==========================================
     # TAB 3: AGRONOMÍA (Sites & Plots)
@@ -128,18 +139,6 @@ def config_page(
     # TAB 4: SEGURIDAD (Users & Permissions)
     # ==========================================
     with tab_seguridad:
-        st.header("Gestión de Usuarios y Seguridad")
-        st.info("🚧 Módulo de gestión de usuarios en desarrollo")
-        
-        # Placeholder for future user management view
-        # user_management_view.render(auth_service)
-        
-        # For now, show basic user info
-        if 'user' in st.session_state and st.session_state['user']:
-            user = st.session_state['user']
-            st.write(f"**Usuario actual:** {user.username}")
-            st.write(f"**Rol:** {user.role}")
-            st.write(f"**Nombre completo:** {user.full_name}")
-        
-        st.divider()
-        st.caption("💡 Próximamente: Gestión de usuarios, roles y permisos")
+        # Usar security_view extraído para mejor SRP
+        current_user = st.session_state.get('user')
+        security_view.render(auth_service, current_user)

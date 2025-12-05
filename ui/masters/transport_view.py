@@ -1,16 +1,23 @@
 import streamlit as st
 from domain.logistics.entities.contractor import Contractor
-from domain.logistics.entities.vehicle import Vehicle
+from domain.logistics.entities.vehicle import Vehicle, VehicleType
 from domain.logistics.entities.driver import Driver
 from ui.generic_master_view import GenericMasterView, FieldConfig
+from ui.masters import containers_view
 
-def render(driver_service, vehicle_service, contractor_service):
+def render(driver_service, vehicle_service, contractor_service, container_service=None):
     """
     Vista de gestión de Transporte usando Vistas Genéricas.
+    
+    Args:
+        driver_service: Servicio de choferes
+        vehicle_service: Servicio de vehículos
+        contractor_service: Servicio de contratistas
+        container_service: Servicio de contenedores (opcional para compatibilidad)
     """
     st.header("🚛 Gestión de Transporte")
     
-    tab1, tab2, tab3 = st.tabs(["Contratistas", "Choferes", "Camiones"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Contratistas", "Choferes", "Camiones", "📦 Contenedores"])
     
     with tab1:
         GenericMasterView(
@@ -61,11 +68,21 @@ def render(driver_service, vehicle_service, contractor_service):
                 "type": FieldConfig(
                     label="Tipo",
                     widget="selectbox",
-                    options=[("BATEA", "BATEA"), ("AMPLIROLL", "AMPLIROLL")],
+                    options=VehicleType.choices(),
                     required=True
                 ),
-                "tare_weight": FieldConfig(label="Tara (kg)", widget="number_input", required=True),
-                "capacity_wet_tons": FieldConfig(label="Capacidad (tons)", widget="number_input", required=True),
+                "tare_weight": FieldConfig(
+                    label="Tara (kg)", 
+                    widget="number_input", 
+                    required=True,
+                    help="Peso del vehículo vacío en kilogramos"
+                ),
+                "max_gross_weight": FieldConfig(
+                    label="PBV Máximo (kg)", 
+                    widget="number_input", 
+                    required=True,
+                    help="Peso Bruto Vehicular máximo permitido (hasta 55,000 kg)"
+                ),
                 "contractor_id": FieldConfig(
                     label="Contratista",
                     widget="selectbox",
@@ -74,3 +91,10 @@ def render(driver_service, vehicle_service, contractor_service):
                 )
             }
         ).render()
+
+    with tab4:
+        # Contenedores (Tolvas) - solo si el servicio está disponible
+        if container_service:
+            containers_view.render(container_service, contractor_service)
+        else:
+            st.warning("⚠️ Servicio de contenedores no disponible.")

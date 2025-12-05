@@ -112,12 +112,19 @@ class BaseRepository(Generic[T]):
         # Dynamically build INSERT query based on dataclass fields
         # Exclude 'id', 'created_at', 'updated_at' as they're auto-generated
         # And exclude fields that are not in the table (like relationships)
+        # Always include is_active (even if False)
         entity_fields = [
             f.name for f in fields(entity) 
             if f.name not in ('id', 'created_at', 'updated_at') 
             and f.name in table_columns
-            and getattr(entity, f.name) is not None
+            and (getattr(entity, f.name) is not None or f.name == 'is_active')
         ]
+        
+        # Ensure is_active defaults to True if not set
+        if 'is_active' in table_columns and not hasattr(entity, 'is_active'):
+            entity.is_active = True
+        elif 'is_active' in table_columns and getattr(entity, 'is_active', None) is None:
+            entity.is_active = True
         
         placeholders = ", ".join(["?"] * len(entity_fields))
         columns = ", ".join(entity_fields)

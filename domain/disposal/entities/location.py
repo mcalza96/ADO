@@ -10,6 +10,7 @@ class Plot:
     area_hectares: Optional[float] = None
     crop_type: Optional[str] = None
     nitrogen_limit_kg_per_ha: Optional[float] = None
+    geometry_wkt: Optional[str] = None  # Well-Known Text for polygons
     is_active: bool = True
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

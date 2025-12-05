@@ -6,9 +6,10 @@ Diferenciación importante:
 - Verificadores (Checkpoints): Eventos puntuales que actúan como llaves para transiciones
   (no son estados, se almacenan en Load.attributes)
 """
-from enum import Enum
+from domain.shared.enums import DisplayableEnum
 
-class LoadStatus(str, Enum):
+
+class LoadStatus(DisplayableEnum):
     """
     Estados del ciclo de vida de una carga.
     
@@ -42,6 +43,21 @@ class LoadStatus(str, Enum):
     
     # Fase Final
     COMPLETED = "COMPLETED"                     # Finalizado exitosamente
+    
+    @property
+    def display_name(self) -> str:
+        """Nombre para mostrar en UI."""
+        return {
+            LoadStatus.REQUESTED: "🟡 Solicitado",
+            LoadStatus.ASSIGNED: "🟠 Asignado",
+            LoadStatus.ACCEPTED: "🟢 Aceptado",
+            LoadStatus.EN_ROUTE_PICKUP: "🚚 En Ruta (Recogida)",
+            LoadStatus.AT_PICKUP: "📦 En Origen",
+            LoadStatus.EN_ROUTE_DESTINATION: "🚛 En Ruta (Destino)",
+            LoadStatus.AT_DESTINATION: "🏭 En Destino",
+            LoadStatus.IN_DISPOSAL: "🌾 En Disposición",
+            LoadStatus.COMPLETED: "✅ Completado"
+        }.get(self, self.value)
 
 
 # Mapeo de compatibilidad con estados legacy

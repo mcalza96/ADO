@@ -121,7 +121,7 @@ def render_lab_analysis_form(load_id: int) -> Optional[Dict[str, Any]]:
         
         submitted = st.form_submit_button(
             "💾 Guardar Análisis",
-            use_container_width=True,
+            width="stretch",
             type="primary"
         )
         
@@ -185,7 +185,7 @@ def render_gate_entry_form(load_id: int) -> Optional[Dict[str, Any]]:
         
         submitted = st.form_submit_button(
             "✅ Registrar Ingreso",
-            use_container_width=True,
+            width="stretch",
             type="primary"
         )
         
@@ -244,7 +244,7 @@ def render_entry_weight_form(load_id: int) -> Optional[Dict[str, Any]]:
         
         submitted = st.form_submit_button(
             "💾 Guardar Pesaje",
-            use_container_width=True,
+            width="stretch",
             type="primary"
         )
         
@@ -304,7 +304,7 @@ def render_exit_weight_form(load_id: int) -> Optional[Dict[str, Any]]:
         
         submitted = st.form_submit_button(
             "💾 Guardar Pesaje",
-            use_container_width=True,
+            width="stretch",
             type="primary"
         )
         
@@ -364,7 +364,7 @@ def render_driver_acceptance_form(load_id: int) -> Optional[Dict[str, Any]]:
         
         submitted = st.form_submit_button(
             "✅ Aceptar Viaje",
-            use_container_width=True,
+            width="stretch",
             type="primary",
             disabled=not confirm
         )
@@ -427,7 +427,7 @@ def render_pickup_confirmation_form(load_id: int) -> Optional[Dict[str, Any]]:
         
         submitted = st.form_submit_button(
             "✅ Confirmar Carga",
-            use_container_width=True,
+            width="stretch",
             type="primary"
         )
         
@@ -545,7 +545,7 @@ def render_geofence_check_form(context: Dict[str, Any]) -> Optional[Dict[str, An
         
         submitted = st.form_submit_button(
             "✅ Confirmar Llegada",
-            use_container_width=True,
+            width="stretch",
             type="primary"
         )
         
@@ -607,7 +607,7 @@ def render_ticket_upload_form(context: Dict[str, Any]) -> Optional[Dict[str, Any
         
         submitted = st.form_submit_button(
             "💾 Guardar Ticket",
-            use_container_width=True,
+            width="stretch",
             type="primary"
         )
         
@@ -707,7 +707,7 @@ def render_daily_log_form(context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         
         submitted = st.form_submit_button(
             "💾 Guardar Parte Diario",
-            use_container_width=True,
+            width="stretch",
             type="primary"
         )
         
