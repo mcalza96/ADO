@@ -16,6 +16,7 @@ Flujo:
 import streamlit as st
 from datetime import datetime
 from typing import Optional, List, Any, Dict
+from domain.logistics.dtos import DispatchExecutionDTO
 
 
 def dispatch_page(container):
@@ -391,38 +392,51 @@ def _handle_dispatch_submit(
             return
     
     try:
-        logistics_service = container.logistics_service
+        # Create DTO (Pydantic validation)
+        dto = DispatchExecutionDTO(
+            load_id=load_id,
+            ticket_number=ticket_number,
+            guide_number=guide_number,
+            weight_net=weight_net,
+            quality_ph=ph,
+            quality_humidity=humidity,
+            container_1_id=container_1_record_id if is_from_treatment_plant else None,
+            container_2_id=container_2_record_id if is_from_treatment_plant else None
+        )
         
-        # Cerrar viaje con los datos del conductor
-        dispatch_data = {
-            'ticket_number': ticket_number,
-            'guide_number': guide_number,
-            'weight_net': weight_net,
-            'quality_ph': ph,
-            'quality_humidity': humidity,
-        }
-        
-        logistics_service.close_trip(load_id, dispatch_data)
-        
-        # Si es desde planta de tratamiento, marcar contenedores como despachados
-        if is_from_treatment_plant:
-            container_tracking_service = getattr(container, 'container_tracking_service', None)
-            if container_tracking_service:
-                try:
-                    # Marcar contenedor 1
-                    container_tracking_service.mark_as_dispatched(
-                        record_id=container_1_record_id,
-                        load_id=load_id,
-                        container_position=1
-                    )
-                    # Marcar contenedor 2
-                    container_tracking_service.mark_as_dispatched(
-                        record_id=container_2_record_id,
-                        load_id=load_id,
-                        container_position=2
-                    )
-                except Exception as e:
-                    st.warning(f"⚠️ Contenedores despachados pero error al actualizar registro: {e}")
+        # Use Application Service
+        if hasattr(container, 'logistics_app_service'):
+            container.logistics_app_service.execute_dispatch(dto)
+        else:
+            # Fallback to legacy logic
+            logistics_service = container.logistics_service
+            
+            dispatch_data = {
+                'ticket_number': ticket_number,
+                'guide_number': guide_number,
+                'weight_net': weight_net,
+                'quality_ph': ph,
+                'quality_humidity': humidity,
+            }
+            
+            logistics_service.close_trip(load_id, dispatch_data)
+            
+            if is_from_treatment_plant:
+                container_tracking_service = getattr(container, 'container_tracking_service', None)
+                if container_tracking_service:
+                    try:
+                        container_tracking_service.mark_as_dispatched(
+                            record_id=container_1_record_id,
+                            load_id=load_id,
+                            container_position=1
+                        )
+                        container_tracking_service.mark_as_dispatched(
+                            record_id=container_2_record_id,
+                            load_id=load_id,
+                            container_position=2
+                        )
+                    except Exception as e:
+                        st.warning(f"⚠️ Contenedores despachados pero error al actualizar registro: {e}")
         
         # Limpiar del estado de sesión
         st.session_state.accepted_trips.discard(load_id)

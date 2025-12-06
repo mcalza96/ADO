@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
-from services.common.event_bus import Event
-from database.db_manager import DatabaseManager
+from infrastructure.events.event_bus import Event
+from infrastructure.persistence.database_manager import DatabaseManager
 from domain.compliance.repositories.regulatory_document_repository import RegulatoryDocumentRepository
 from domain.compliance.entities.regulatory_document import RegulatoryDocument
 from domain.logistics.repositories.load_repository import LoadRepository

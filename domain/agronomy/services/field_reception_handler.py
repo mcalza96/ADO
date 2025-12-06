@@ -1,5 +1,5 @@
-from services.common.event_bus import Event
-from database.db_manager import DatabaseManager
+from infrastructure.events.event_bus import Event
+from infrastructure.persistence.database_manager import DatabaseManager
 from datetime import datetime
 
 

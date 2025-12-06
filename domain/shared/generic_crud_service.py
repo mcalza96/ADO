@@ -1,7 +1,7 @@
 from typing import TypeVar, Generic, List, Optional, Any
 from domain.shared.base_service import BaseService
 from domain.shared.enums import DisplayableEnum
-from database.repository import BaseRepository
+from infrastructure.persistence.generic_repository import BaseRepository
 
 T = TypeVar("T")
 

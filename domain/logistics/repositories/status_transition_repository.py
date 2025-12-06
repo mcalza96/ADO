@@ -6,9 +6,9 @@ de las cargas, permitiendo auditoría completa y cálculo de SLA.
 """
 from typing import List, Optional
 from datetime import datetime, timedelta
-from database.repository import BaseRepository
+from infrastructure.persistence.generic_repository import BaseRepository
 from domain.logistics.entities.status_transition import StatusTransition
-from database.db_manager import DatabaseManager
+from infrastructure.persistence.database_manager import DatabaseManager
 
 
 class StatusTransitionRepository(BaseRepository[StatusTransition]):

@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple
-from database.db_manager import DatabaseManager
-from database.repository import BaseRepository
+from infrastructure.persistence.database_manager import DatabaseManager
+from infrastructure.persistence.generic_repository import BaseRepository
 import sqlite3
 
 

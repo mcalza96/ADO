@@ -1,6 +1,6 @@
 from datetime import datetime
-from services.common.event_bus import Event
-from database.db_manager import DatabaseManager
+from infrastructure.events.event_bus import Event
+from infrastructure.persistence.database_manager import DatabaseManager
 from domain.finance.repositories.finance_repository import RateSheetRepository, CostRecordRepository
 from domain.finance.entities.finance_entities import CostRecord
 from domain.logistics.repositories.load_repository import LoadRepository

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-from database.db_manager import DatabaseManager
+from infrastructure.persistence.database_manager import DatabaseManager
 from domain.logistics.repositories.load_repository import LoadRepository
 from domain.logistics.entities.load_status import LoadStatus
 from domain.logistics.services.transition_rules import get_validators_for_transition, VALID_TRANSITIONS

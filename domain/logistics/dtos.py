@@ -297,6 +297,32 @@ class LoadTransitionRequestDTO(BaseModel):
     checkpoint_data: Optional[dict] = None  # Required verifiers for this transition
 
 
+class DispatchExecutionDTO(BaseModel):
+    """
+    Data required to execute a dispatch (Gate Out).
+    """
+    load_id: int = Field(gt=0, description="ID of the load being dispatched")
+    ticket_number: str = Field(min_length=1, description="Weighing ticket number")
+    guide_number: str = Field(min_length=1, description="Transport guide number")
+    weight_net: float = Field(gt=0, le=50000, description="Net weight in kg")
+    quality_ph: float = Field(ge=0, le=14, description="pH value")
+    quality_humidity: float = Field(ge=0, le=100, description="Humidity percentage")
+    
+    # Optional container tracking fields (for treatment plants)
+    container_1_id: Optional[int] = Field(None, description="ID of first container record")
+    container_2_id: Optional[int] = Field(None, description="ID of second container record")
+
+
+class PickupRequestDTO(BaseModel):
+    """
+    Data required to create a pickup request.
+    """
+    facility_id: int = Field(gt=0, description="ID of the origin facility")
+    requested_date: datetime = Field(description="Date requested for pickup")
+    weight_estimated: Optional[float] = Field(None, gt=0, description="Estimated weight in kg")
+    notes: Optional[str] = Field(None, max_length=500, description="Additional notes")
+
+
 # ==================== EXAMPLE USAGE ====================
 
 """

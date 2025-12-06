@@ -1,5 +1,5 @@
 from typing import Dict, Optional
-from database.db_manager import DatabaseManager
+from infrastructure.persistence.database_manager import DatabaseManager
 from domain.shared.base_service import BaseService
 from infrastructure.reporting.pdf_manifest_generator import PdfManifestGenerator
 from domain.logistics.entities.load import Load

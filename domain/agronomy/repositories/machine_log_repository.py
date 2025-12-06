@@ -1,7 +1,7 @@
 from typing import Optional, List
-from database.repository import BaseRepository
+from infrastructure.persistence.generic_repository import BaseRepository
 from domain.agronomy.entities.machine_log import MachineLog
-from database.db_manager import DatabaseManager
+from infrastructure.persistence.database_manager import DatabaseManager
 
 
 class MachineLogRepository(BaseRepository[MachineLog]):

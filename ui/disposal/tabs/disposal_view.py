@@ -11,12 +11,14 @@ import streamlit as st
 from typing import Any, List
 
 
-def render(disposal_service: Any, site_id: int) -> None:
+from domain.disposal.application.disposal_app_service import DisposalExecutionDTO
+
+def render(container: Any, site_id: int) -> None:
     """
     Render the field disposal tab.
     
     Args:
-        disposal_service: Service for managing disposal operations
+        container: Dependency container
         site_id: ID of the selected disposal site
     """
     st.subheader("🚜 Disposición en Campo")
@@ -27,14 +29,26 @@ def render(disposal_service: Any, site_id: int) -> None:
     
     st.divider()
     
-    arrived_loads = _get_arrived_loads(disposal_service, site_id)
+    # Use App Service if available, fallback to legacy service
+    app_service = getattr(container, 'disposal_app_service', None)
+    legacy_service = getattr(container, 'disposal_service', None)
+    
+    arrived_loads = []
+    if app_service:
+        arrived_loads = app_service.get_pending_disposal_loads(site_id)
+    elif legacy_service:
+        arrived_loads = _get_arrived_loads_legacy(legacy_service, site_id)
     
     if not arrived_loads:
         st.info("✅ No hay cargas recepcionadas pendientes de disposición.")
         return
     
     # Obtener parcelas disponibles para el selector
-    plots = _get_plots_for_site(disposal_service, site_id)
+    plots = []
+    if app_service:
+        plots = app_service.get_site_plots(site_id)
+    elif legacy_service:
+        plots = _get_plots_for_site_legacy(legacy_service, site_id)
     
     if not plots:
         st.warning("⚠️ No hay parcelas configuradas para este predio. Configure parcelas en el módulo de Configuración.")
@@ -43,11 +57,11 @@ def render(disposal_service: Any, site_id: int) -> None:
     st.success(f"📦 Hay {len(arrived_loads)} carga(s) lista(s) para disposición.")
     
     for load in arrived_loads:
-        _render_disposal_card(disposal_service, load, plots)
+        _render_disposal_card(container, load, plots)
 
 
-def _get_arrived_loads(disposal_service: Any, site_id: int) -> list:
-    """Get loads ready for disposal (Status: AT_DESTINATION) for the given site."""
+def _get_arrived_loads_legacy(disposal_service: Any, site_id: int) -> list:
+    """Legacy method to get loads."""
     try:
         # Intentar usar método específico para disposición
         if hasattr(disposal_service, 'get_pending_disposal_loads'):
@@ -62,8 +76,8 @@ def _get_arrived_loads(disposal_service: Any, site_id: int) -> list:
         return []
 
 
-def _get_plots_for_site(disposal_service: Any, site_id: int) -> List[Any]:
-    """Get available plots/sectors for the site."""
+def _get_plots_for_site_legacy(disposal_service: Any, site_id: int) -> List[Any]:
+    """Legacy method to get plots."""
     try:
         return disposal_service.get_plots_by_site(site_id)
     except Exception as e:
@@ -71,7 +85,7 @@ def _get_plots_for_site(disposal_service: Any, site_id: int) -> List[Any]:
         return []
 
 
-def _render_disposal_card(disposal_service: Any, load: Any, plots: List[Any]) -> None:
+def _render_disposal_card(container: Any, load: Any, plots: List[Any]) -> None:
     """Render a single disposal card with form."""
     # Obtener peso neto de cualquiera de los dos campos
     peso_neto = load.weight_net or load.net_weight or 0
@@ -83,7 +97,7 @@ def _render_disposal_card(disposal_service: Any, load: Any, plots: List[Any]) ->
     ):
         _render_load_summary(load)
         st.divider()
-        _render_disposal_form(disposal_service, load, plots)
+        _render_disposal_form(container, load, plots)
 
 
 def _render_load_summary(load: Any) -> None:
@@ -118,7 +132,7 @@ def _render_load_summary(load: Any) -> None:
             st.markdown(f"**📝 Obs:** {load.reception_observations}")
 
 
-def _render_disposal_form(disposal_service: Any, load: Any, plots: List[Any]) -> None:
+def _render_disposal_form(container: Any, load: Any, plots: List[Any]) -> None:
     """Render the disposal form with plot selector."""
     st.markdown("#### 🌾 Seleccionar Destino de Disposición")
     
@@ -141,7 +155,34 @@ def _render_disposal_form(disposal_service: Any, load: Any, plots: List[Any]) ->
             st.caption(f"Área de parcela: {selected_plot.area_hectares:.2f} hectáreas")
         
         if st.form_submit_button("✅ Confirmar Disposición", type="primary"):
-            _handle_disposal_submit(disposal_service, load.id, selected_plot_id)
+            _handle_disposal_submit(container, load.id, selected_plot_id)
+
+
+def _handle_disposal_submit(
+    container: Any,
+    load_id: int,
+    plot_id: int
+) -> None:
+    """Handle the disposal form submission."""
+    try:
+        # Use App Service if available
+        if hasattr(container, 'disposal_app_service'):
+            dto = DisposalExecutionDTO(
+                load_id=load_id,
+                plot_id=plot_id
+            )
+            container.disposal_app_service.execute_disposal(dto)
+        else:
+            # Fallback
+            container.disposal_service.execute_disposal(
+                load_id=load_id,
+                plot_id=plot_id
+            )
+        
+        st.success(f"✅ Carga #{load_id} dispuesta correctamente en parcela.")
+        st.rerun()
+    except Exception as e:
+        st.error(f"❌ Error al registrar disposición: {e}")
 
 
 def _handle_disposal_submit(

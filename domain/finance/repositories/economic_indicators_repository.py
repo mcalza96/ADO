@@ -1,5 +1,5 @@
 from typing import Optional, List
-from database.db_manager import DatabaseManager
+from infrastructure.persistence.database_manager import DatabaseManager
 
 
 class EconomicIndicatorsRepository:

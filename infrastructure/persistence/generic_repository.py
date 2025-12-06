@@ -1,5 +1,5 @@
 from typing import TypeVar, Generic, List, Optional, Type, Any
-from database.db_manager import DatabaseManager
+from infrastructure.persistence.database_manager import DatabaseManager
 from dataclasses import fields
 import sqlite3
 import json

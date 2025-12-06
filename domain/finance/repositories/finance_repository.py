@@ -1,7 +1,7 @@
 from typing import Optional, List
-from database.repository import BaseRepository
+from infrastructure.persistence.generic_repository import BaseRepository
 from domain.finance.entities.finance_entities import RateSheet, CostRecord
-from database.db_manager import DatabaseManager
+from infrastructure.persistence.database_manager import DatabaseManager
 
 class RateSheetRepository(BaseRepository[RateSheet]):
     def __init__(self, db_manager: DatabaseManager):

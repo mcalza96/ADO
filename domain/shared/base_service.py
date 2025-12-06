@@ -6,11 +6,11 @@ Provides common infrastructure for services including access to the database
 and event bus for inter-service communication.
 """
 
-from database.db_manager import DatabaseManager
+from infrastructure.persistence.database_manager import DatabaseManager
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from services.common.event_bus import EventBus
+    from infrastructure.events.event_bus import EventBus
 
 
 class BaseService:

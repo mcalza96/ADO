@@ -3,8 +3,8 @@ Servicio para gestión de solicitudes de retiro del cliente.
 """
 from typing import List, Optional
 from datetime import datetime, date
-from database.db_manager import DatabaseManager
-from database.repository import BaseRepository
+from infrastructure.persistence.database_manager import DatabaseManager
+from infrastructure.persistence.generic_repository import BaseRepository
 from domain.logistics.entities.pickup_request import PickupRequest, PickupRequestStatus
 from domain.logistics.entities.load import Load
 from domain.logistics.entities.load_status import LoadStatus

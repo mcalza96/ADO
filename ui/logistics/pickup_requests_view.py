@@ -34,6 +34,11 @@ def pickup_requests_page(container):
 def _get_pending_requests(container):
     """Obtiene las solicitudes de retiro pendientes."""
     try:
+        if hasattr(container, 'logistics_app_service'):
+            # TODO: Migrar PickupRequestService a LogisticsAppService completamente
+            # Por ahora mantenemos el servicio específico ya que maneja lógica compleja de agrupación
+            pass
+            
         pickup_service = container.pickup_request_service
         return pickup_service.get_pending_requests()
     except Exception as e:

@@ -34,7 +34,9 @@ def tracking_page(container):
 def _get_active_loads(container):
     """Obtiene las cargas activas en tránsito."""
     try:
-        if hasattr(container, 'dispatch_service'):
+        if hasattr(container, 'logistics_app_service'):
+            return container.logistics_app_service.get_active_loads()
+        elif hasattr(container, 'dispatch_service'):
             return container.dispatch_service.get_loads_by_status("IN_TRANSIT")
     except Exception as e:
         st.warning(f"⚠️ Error al cargar seguimiento: {str(e)}")

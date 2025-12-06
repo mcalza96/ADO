@@ -12,12 +12,14 @@ import streamlit as st
 from typing import Any
 
 
-def render(disposal_service: Any, site_id: int) -> None:
+from domain.disposal.application.disposal_app_service import DisposalReceptionDTO
+
+def render(container: Any, site_id: int) -> None:
     """
     Render the reception tab for disposal operations.
     
     Args:
-        disposal_service: Service for managing disposal operations
+        container: Dependency container
         site_id: ID of the selected disposal site
     """
     st.subheader("🚛 Recepción en Portería")
@@ -28,7 +30,15 @@ def render(disposal_service: Any, site_id: int) -> None:
     
     st.divider()
     
-    dispatched_loads = _get_dispatched_loads(disposal_service, site_id)
+    # Use App Service if available, fallback to legacy service
+    app_service = getattr(container, 'disposal_app_service', None)
+    legacy_service = getattr(container, 'disposal_service', None)
+    
+    dispatched_loads = []
+    if app_service:
+        dispatched_loads = app_service.get_incoming_loads(site_id)
+    elif legacy_service:
+        dispatched_loads = _get_dispatched_loads_legacy(legacy_service, site_id)
     
     if not dispatched_loads:
         st.info("✅ No hay cargas en ruta hacia este predio.")
@@ -37,11 +47,11 @@ def render(disposal_service: Any, site_id: int) -> None:
     st.success(f"📦 Hay {len(dispatched_loads)} carga(s) en ruta esperando recepción.")
     
     for load in dispatched_loads:
-        _render_load_reception_card(disposal_service, load)
+        _render_load_reception_card(container, load)
 
 
-def _get_dispatched_loads(disposal_service: Any, site_id: int) -> list:
-    """Get loads with status='EN_ROUTE_DESTINATION' for the given site."""
+def _get_dispatched_loads_legacy(disposal_service: Any, site_id: int) -> list:
+    """Legacy method to get loads."""
     try:
         # Usar el nuevo método que filtra por destino y status correcto
         if hasattr(disposal_service, 'get_in_transit_loads_by_destination_site'):
@@ -65,7 +75,7 @@ def _get_dispatched_loads(disposal_service: Any, site_id: int) -> list:
         return []
 
 
-def _render_load_reception_card(disposal_service: Any, load: Any) -> None:
+def _render_load_reception_card(container: Any, load: Any) -> None:
     """Render a single load reception card with form."""
     with st.expander(
         f"🚛 Carga #{load.id} - Guía: {load.guide_number or 'S/N'}",
@@ -73,7 +83,7 @@ def _render_load_reception_card(disposal_service: Any, load: Any) -> None:
     ):
         _render_transport_data(load)
         st.divider()
-        _render_reception_form(disposal_service, load)
+        _render_reception_form(container, load)
 
 
 def _render_transport_data(load: Any) -> None:
@@ -105,7 +115,7 @@ def _render_transport_data(load: Any) -> None:
             st.metric("🕐 Despacho", "N/A")
 
 
-def _render_reception_form(disposal_service: Any, load: Any) -> None:
+def _render_reception_form(container: Any, load: Any) -> None:
     """Render the reception form - solo captura pH de verificación."""
     st.markdown("#### ✅ Verificación en Recepción")
     
@@ -132,22 +142,37 @@ def _render_reception_form(disposal_service: Any, load: Any) -> None:
             )
         
         if st.form_submit_button("✅ Confirmar Recepción", type="primary"):
-            _handle_reception_submit(disposal_service, load.id, ph_reception, observation)
+            _handle_reception_submit(container, load.id, ph_reception, observation)
 
 
 def _handle_reception_submit(
-    disposal_service: Any,
+    container: Any,
     load_id: int,
     ph: float,
     observation: str | None
 ) -> None:
     """Handle the reception form submission."""
     try:
-        disposal_service.register_arrival(
-            load_id=load_id,
-            ph=ph,
-            observation=observation if observation else None
-        )
+        # Use App Service if available
+        if hasattr(container, 'disposal_app_service'):
+            dto = DisposalReceptionDTO(
+                load_id=load_id,
+                ph=ph,
+                observation=observation
+            )
+            container.disposal_app_service.register_arrival(dto)
+        else:
+            # Fallback
+            container.disposal_service.register_arrival(
+                load_id=load_id,
+                ph=ph,
+                observation=observation if observation else None
+            )
+        
+        st.success(f"✅ Carga #{load_id} recepcionada correctamente.")
+        st.rerun()
+    except Exception as e:
+        st.error(f"❌ Error al registrar recepción: {e}")
         st.success(
             f"✅ Carga #{load_id} recepcionada exitosamente. "
             "Ahora está disponible para disposición en campo."

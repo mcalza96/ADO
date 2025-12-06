@@ -1,7 +1,7 @@
 from typing import List, Optional
-from database.repository import BaseRepository
+from infrastructure.persistence.generic_repository import BaseRepository
 from domain.maintenance.entities.maintenance_plan import MaintenancePlan, MaintenanceOrder
-from database.db_manager import DatabaseManager
+from infrastructure.persistence.database_manager import DatabaseManager
 
 class MaintenancePlanRepository(BaseRepository[MaintenancePlan]):
     def __init__(self, db_manager: DatabaseManager):

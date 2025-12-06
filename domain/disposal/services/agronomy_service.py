@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict
 from datetime import datetime, date
-from database.db_manager import DatabaseManager
-from database.repository import BaseRepository
+from infrastructure.persistence.database_manager import DatabaseManager
+from infrastructure.persistence.generic_repository import BaseRepository
 from domain.logistics.repositories.load_repository import LoadRepository
 from domain.logistics.entities.load import Load
 from domain.disposal.entities.site_event import SiteEvent

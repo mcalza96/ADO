@@ -12,10 +12,10 @@ services directly. Instead, it should request ready-to-use services from this co
 
 import streamlit as st
 from types import SimpleNamespace
-from database.db_manager import DatabaseManager
+from infrastructure.persistence.database_manager import DatabaseManager
 from domain.logistics.repositories.load_repository import LoadRepository
-from repositories.reporting_repository import ReportingRepository
-from database.repository import BaseRepository
+from infrastructure.persistence.reporting_repository import ReportingRepository
+from infrastructure.persistence.generic_repository import BaseRepository
 
 # Models for Generic Repositories
 from domain.shared.entities.location import Site, Plot
@@ -32,22 +32,25 @@ from domain.logistics.entities.container import Container
 
 from domain.disposal.services.location_service import LocationService
 from domain.logistics.services.dispatch_service import LogisticsDomainService
+from domain.logistics.application.logistics_app_service import LogisticsApplicationService
 from domain.logistics.services.pickup_request_service import PickupRequestService
 from domain.disposal.services.agronomy_service import AgronomyDomainService
+from domain.disposal.services.disposal_master_service import DisposalService
 from domain.shared.services.auth_service import AuthService
-from services.operations.manifest_service import ManifestService
-from services.operations.container_tracking_service import ContainerTrackingService
+from domain.logistics.services.manifest_service import ManifestService
+from domain.processing.services.container_tracking_service import ContainerTrackingService
 from domain.shared.services.compliance_service import ComplianceService
 from domain.processing.services.reception_service import TreatmentReceptionService
-from domain.shared.generic_crud_service import GenericCrudService
-from domain.disposal.services.disposal_master_service import DisposalService as MasterDisposalService
 from domain.processing.services.treatment_master_service import TreatmentService
-from services.reporting.reporting_service import ReportingService
-from services.operations.dashboard_service import DashboardService
-from services.ui.task_resolver import TaskResolver
+from domain.shared.generic_crud_service import GenericCrudService
+from domain.disposal.application.disposal_app_service import DisposalApplicationService
+from domain.processing.application.treatment_app_service import TreatmentApplicationService
+from infrastructure.reporting.reporting_service import ReportingService
+from infrastructure.reporting.dashboard_service import DashboardService
+from ui.utils.task_resolver import TaskResolver
 
 # Event Bus
-from services.common.event_bus import EventBus, EventTypes
+from infrastructure.events.event_bus import EventBus, EventTypes
 
 # Machinery & Field Reception
 from domain.agronomy.services.machinery_service import MachineryService
@@ -140,8 +143,8 @@ def get_container() -> SimpleNamespace:
         db_manager,
         compliance_service,
         agronomy_service,
-        manifest_service,
-        event_bus=event_bus  # Inject EventBus
+        # manifest_service,  # Removed: Injected in App Service
+        # event_bus=event_bus # Removed: Injected in App Service
     )
     
     # Machinery Service
@@ -171,7 +174,10 @@ def get_container() -> SimpleNamespace:
     event_bus.subscribe(EventTypes.MACHINE_WORK_RECORDED, costing_listener.handle_machine_work)
     
     # Master Disposal Service - debe crearse antes del alias
-    master_disposal_service = MasterDisposalService(db_manager)
+    master_disposal_service = DisposalService(db_manager)
+    
+    # Disposal Application Service
+    disposal_app_service = DisposalApplicationService(master_disposal_service)
     
     # Aliases for backward compatibility (if needed during transition)
     dispatch_service = logistics_service
@@ -182,6 +188,9 @@ def get_container() -> SimpleNamespace:
     
     # Treatment Reception Service
     treatment_reception_service = TreatmentReceptionService(db_manager)
+    
+    # Treatment Application Service
+    treatment_app_service = TreatmentApplicationService(treatment_reception_service)
     
     # Master Services (using GenericCrudService)
     client_service = GenericCrudService(client_repo)
@@ -207,6 +216,14 @@ def get_container() -> SimpleNamespace:
 
     # Container Tracking Service (DS4 container filling with pH measurements)
     container_tracking_service = ContainerTrackingService(db_manager)
+
+    # Application Services
+    logistics_app_service = LogisticsApplicationService(
+        logistics_service=logistics_service,
+        manifest_service=manifest_service,
+        event_bus=event_bus,
+        container_tracking_service=container_tracking_service
+    )
 
     # Task Resolver (UI Service)
     task_resolver = TaskResolver(load_repo, machine_log_repo)
@@ -240,13 +257,16 @@ def get_container() -> SimpleNamespace:
         event_bus=event_bus,
         location_service=location_service,
         disposal_service=disposal_service,
+        disposal_app_service=disposal_app_service,
         auth_service=auth_service,
         dispatch_service=dispatch_service,
         site_prep_service=site_prep_service,
         manifest_service=manifest_service,
         reception_service=reception_service,
         logistics_service=logistics_service,
+        logistics_app_service=logistics_app_service,
         treatment_reception_service=treatment_reception_service,
+        treatment_app_service=treatment_app_service,
         client_service=client_service,
         facility_service=facility_service,
         contractor_service=contractor_service,

@@ -1,7 +1,7 @@
 from typing import List, Optional
 import streamlit as st
 from domain.shared.entities.location import Site, Plot
-from database.repository import BaseRepository
+from infrastructure.persistence.generic_repository import BaseRepository
 
 class LocationService:
     """

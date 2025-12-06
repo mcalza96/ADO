@@ -27,28 +27,6 @@ st.set_page_config(
 import sqlite3
 import os
 
-def run_migrations():
-    """
-    Checks and applies critical database migrations.
-    """
-    db_path = "database/biosolids.db"
-    if os.path.exists(db_path):
-        try:
-            conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            
-            # Check for requested_date in loads
-            cursor.execute("PRAGMA table_info(loads)")
-            columns = [info[1] for info in cursor.fetchall()]
-            if "requested_date" not in columns:
-                cursor.execute("ALTER TABLE loads ADD COLUMN requested_date DATETIME")
-                conn.commit()
-                print("Migration applied: Added requested_date to loads table.")
-                
-            conn.close()
-        except Exception as e:
-            print(f"Migration failed: {e}")
-
 from container import get_container
 
 def main():
@@ -155,5 +133,4 @@ def main():
             config_page(container)
 
 if __name__ == "__main__":
-    run_migrations()
     main()

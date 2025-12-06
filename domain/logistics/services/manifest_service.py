@@ -1,8 +1,8 @@
 from typing import Dict, Any, Optional
 from datetime import datetime
-from database.db_manager import DatabaseManager
+from infrastructure.persistence.database_manager import DatabaseManager
 from domain.logistics.repositories.load_repository import LoadRepository
-from database.repository import BaseRepository
+from infrastructure.persistence.generic_repository import BaseRepository
 from domain.shared.entities.location import Site, Plot
 from domain.processing.entities.treatment_plant import TreatmentPlant
 from domain.logistics.entities.driver import Driver

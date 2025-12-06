@@ -1,7 +1,7 @@
 from typing import Dict, Any, Optional
 import json
 from datetime import date
-from database.repository import BaseRepository
+from infrastructure.persistence.generic_repository import BaseRepository
 from domain.logistics.repositories.load_repository import LoadRepository
 from domain.shared.entities.location import Site
 from domain.disposal.entities.application import NitrogenApplication

@@ -12,12 +12,14 @@ import datetime
 from typing import Any
 
 
-def render(reception_service: Any, plant_id: int) -> None:
+from domain.processing.application.treatment_app_service import TreatmentReceptionDTO
+
+def render(container: Any, plant_id: int) -> None:
     """
     Render the sludge reception tab.
     
     Args:
-        reception_service: Service for managing treatment reception
+        container: Dependency container
         plant_id: ID of the selected treatment plant
     """
     st.subheader("📥 Bandeja de Entrada (Cargas en Ruta)")
@@ -25,8 +27,15 @@ def render(reception_service: Any, plant_id: int) -> None:
     if st.button("🔄 Actualizar Bandeja"):
         st.rerun()
     
-    # Obtener cargas en tránsito hacia esta planta
-    pending = _get_in_transit_loads(reception_service, plant_id)
+    # Use App Service if available, fallback to legacy service
+    app_service = getattr(container, 'treatment_app_service', None)
+    legacy_service = getattr(container, 'treatment_reception_service', None)
+    
+    pending = []
+    if app_service:
+        pending = app_service.get_incoming_loads(plant_id)
+    elif legacy_service:
+        pending = _get_in_transit_loads_legacy(legacy_service, plant_id)
     
     if not pending:
         st.info("No hay cargas en ruta hacia esta planta.")
@@ -35,20 +44,11 @@ def render(reception_service: Any, plant_id: int) -> None:
     st.success(f"Hay {len(pending)} cargas en ruta esperando recepción.")
     
     for load in pending:
-        _render_load_reception_card(reception_service, load)
+        _render_load_reception_card(container, load)
 
 
-def _get_in_transit_loads(reception_service: Any, plant_id: int) -> list:
-    """
-    Get loads in transit (EN_ROUTE_DESTINATION) heading to the treatment plant.
-    
-    Args:
-        reception_service: Service for managing treatment reception
-        plant_id: ID of the treatment plant
-        
-    Returns:
-        List of loads in transit to this plant
-    """
+def _get_in_transit_loads_legacy(reception_service: Any, plant_id: int) -> list:
+    """Legacy method to get loads."""
     try:
         # Intentar usar el nuevo método del servicio de logística
         if hasattr(reception_service, 'get_in_transit_loads_by_treatment_plant'):
@@ -75,7 +75,7 @@ def _get_in_transit_loads(reception_service: Any, plant_id: int) -> list:
         return []
 
 
-def _render_load_reception_card(reception_service: Any, load: Any) -> None:
+def _render_load_reception_card(container: Any, load: Any) -> None:
     """Render a single load reception card with form."""
     peso_neto = load.weight_net or load.net_weight or 0
     with st.expander(
@@ -84,7 +84,7 @@ def _render_load_reception_card(reception_service: Any, load: Any) -> None:
     ):
         _render_transport_data(load)
         st.divider()
-        _render_reception_form(reception_service, load)
+        _render_reception_form(container, load)
 
 
 def _render_transport_data(load: Any) -> None:
@@ -116,7 +116,7 @@ def _render_transport_data(load: Any) -> None:
             st.metric("🕐 Despacho", "N/A")
 
 
-def _render_reception_form(reception_service: Any, load: Any) -> None:
+def _render_reception_form(container: Any, load: Any) -> None:
     """Render the reception form for a load."""
     st.markdown("#### ✅ Verificación en Recepción")
     
@@ -172,12 +172,12 @@ def _render_reception_form(reception_service: Any, load: Any) -> None:
         
         if st.form_submit_button("✅ Confirmar Recepción", type="primary"):
             _handle_reception_submit(
-                reception_service, load.id, rec_time, dis_time, arrival_ph, humidity, observation
+                container, load.id, rec_time, dis_time, arrival_ph, humidity, observation
             )
 
 
 def _handle_reception_submit(
-    reception_service: Any,
+    container: Any,
     load_id: int,
     rec_time: datetime.time,
     dis_time: datetime.time,
@@ -192,15 +192,30 @@ def _handle_reception_submit(
         rec_dt = datetime.datetime.combine(today, rec_time)
         dis_dt = datetime.datetime.combine(today, dis_time)
         
-        reception_service.execute_reception(
-            load_id=load_id, 
-            reception_time=rec_dt, 
-            discharge_time=dis_dt, 
-            ph=arrival_ph,
-            humidity=humidity,
-            observation=observation if observation else None,
-            arrival_ph=arrival_ph
-        )
+        # Use App Service if available
+        if hasattr(container, 'treatment_app_service'):
+            dto = TreatmentReceptionDTO(
+                load_id=load_id,
+                reception_time=rec_dt,
+                discharge_time=dis_dt,
+                ph=arrival_ph,
+                humidity=humidity,
+                observation=observation,
+                arrival_ph=arrival_ph
+            )
+            container.treatment_app_service.execute_reception(dto)
+        else:
+            # Fallback
+            container.treatment_reception_service.execute_reception(
+                load_id=load_id, 
+                reception_time=rec_dt, 
+                discharge_time=dis_dt, 
+                ph=arrival_ph,
+                humidity=humidity,
+                observation=observation if observation else None,
+                arrival_ph=arrival_ph
+            )
+            
         st.success(
             f"✅ Carga #{load_id} recepcionada y completada exitosamente. "
             "El viaje ha finalizado."

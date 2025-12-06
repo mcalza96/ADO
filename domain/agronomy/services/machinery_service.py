@@ -1,11 +1,11 @@
 from typing import Dict, Any, Optional
 from datetime import datetime
 from decimal import Decimal
-from database.db_manager import DatabaseManager
+from infrastructure.persistence.database_manager import DatabaseManager
 from domain.agronomy.repositories.machine_log_repository import MachineLogRepository
 from domain.agronomy.entities.machine_log import MachineLog
 from domain.shared.exceptions import DomainException
-from services.common.event_bus import EventBus, Event, EventTypes
+from infrastructure.events.event_bus import EventBus, Event, EventTypes
 
 
 class MachineryService:

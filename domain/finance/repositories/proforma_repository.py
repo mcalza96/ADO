@@ -11,7 +11,7 @@ from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 import json
 
-from database.db_manager import DatabaseManager
+from infrastructure.persistence.database_manager import DatabaseManager
 from domain.finance.entities.finance_entities import Proforma
 
 

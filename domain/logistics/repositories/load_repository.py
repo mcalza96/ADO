@@ -1,9 +1,9 @@
 from typing import List, Optional, Dict
 from datetime import datetime
-from database.repository import BaseRepository
+from infrastructure.persistence.generic_repository import BaseRepository
 from domain.logistics.entities.load import Load
 from domain.logistics.entities.load_status import LoadStatus
-from database.db_manager import DatabaseManager
+from infrastructure.persistence.database_manager import DatabaseManager
 
 class LoadRepository(BaseRepository[Load]):
     def __init__(self, db_manager: DatabaseManager):

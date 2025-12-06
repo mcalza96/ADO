@@ -1,11 +1,11 @@
 from typing import Optional
 from datetime import datetime
-from services.common.event_bus import Event, EventTypes
-from database.db_manager import DatabaseManager
+from infrastructure.events.event_bus import Event, EventTypes
+from infrastructure.persistence.database_manager import DatabaseManager
 from domain.maintenance.repositories.maintenance_repository import MaintenancePlanRepository, MaintenanceOrderRepository
 from domain.maintenance.entities.maintenance_plan import MaintenanceOrder, MaintenanceStrategy
 from domain.logistics.entities.vehicle import Vehicle
-from database.repository import BaseRepository
+from infrastructure.persistence.generic_repository import BaseRepository
 
 class MaintenanceListener:
     """

@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import Optional, Tuple, List, Dict, Any
-from database.db_manager import DatabaseManager
+from infrastructure.persistence.database_manager import DatabaseManager
 
 class ReportingRepository:
     """

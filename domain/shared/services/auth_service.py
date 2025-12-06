@@ -1,6 +1,6 @@
 from typing import Optional, List
 from domain.shared.base_service import BaseService
-from database.repository import BaseRepository
+from infrastructure.persistence.generic_repository import BaseRepository
 from domain.shared.entities.user import User
 import hashlib
 

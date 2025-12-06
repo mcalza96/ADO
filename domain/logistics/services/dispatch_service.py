@@ -1,8 +1,8 @@
 from typing import Optional, Dict, Any, List
 import uuid
 from datetime import datetime, timedelta
-from database.db_manager import DatabaseManager
-from database.repository import BaseRepository
+from infrastructure.persistence.database_manager import DatabaseManager
+from infrastructure.persistence.generic_repository import BaseRepository
 from domain.logistics.repositories.load_repository import LoadRepository
 from domain.logistics.repositories.distance_matrix_repository import DistanceMatrixRepository
 from domain.logistics.repositories.status_transition_repository import StatusTransitionRepository
@@ -18,7 +18,7 @@ from domain.logistics.services.transition_rules import (
 from domain.processing.entities.facility import Facility
 from domain.shared.services.compliance_service import ComplianceService
 from domain.disposal.services.agronomy_service import AgronomyDomainService
-from services.operations.manifest_service import ManifestService
+from domain.logistics.services.manifest_service import ManifestService
 from domain.shared.exceptions import TransitionException, ComplianceViolationError, DomainException
 from domain.shared.constants import SLUDGE_DENSITY
 
@@ -37,8 +37,8 @@ class LogisticsDomainService:
         db_manager: DatabaseManager,
         compliance_service: ComplianceService,
         agronomy_service: AgronomyDomainService,
-        manifest_service: ManifestService,
-        event_bus: 'EventBus' = None  # Nuevo: EventBus para publicar eventos
+        # manifest_service: ManifestService,  <-- DEPRECATED: Moved to App Service
+        # event_bus: 'EventBus' = None        <-- DEPRECATED: Moved to App Service
     ):
         self.db_manager = db_manager
         self.load_repo = LoadRepository(db_manager)
@@ -46,12 +46,12 @@ class LogisticsDomainService:
         self.vehicle_repo = BaseRepository(db_manager, Vehicle, "vehicles")
         self.container_repo = BaseRepository(db_manager, Container, "containers")
         self.facility_repo = BaseRepository(db_manager, Facility, "facilities")
-        self.distance_matrix_repo = DistanceMatrixRepository(db_manager)  # Nuevo para Trip Linking
+        self.distance_matrix_repo = DistanceMatrixRepository(db_manager)
         
         self.compliance_service = compliance_service
         self.agronomy_service = agronomy_service
-        self.manifest_service = manifest_service
-        self.event_bus = event_bus  # Nuevo
+        # self.manifest_service = manifest_service
+        # self.event_bus = event_bus
 
     # --- Planning Phase ---
     def create_request(self, facility_id: Optional[int], requested_date: datetime, plant_id: Optional[int] = None, 
@@ -505,7 +505,7 @@ class LogisticsDomainService:
         
         # 7. Publicar evento LoadStatusChanged
         if success and self.event_bus:
-            from services.common.event_bus import Event, EventTypes
+            from infrastructure.events.event_bus import Event, EventTypes
             self.event_bus.publish(Event(
                 event_type=EventTypes.LOAD_STATUS_CHANGED,
                 data={
