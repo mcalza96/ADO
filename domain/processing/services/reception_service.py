@@ -4,11 +4,11 @@ from infrastructure.persistence.database_manager import DatabaseManager
 from infrastructure.persistence.generic_repository import BaseRepository
 from domain.logistics.entities.load import Load
 from domain.logistics.entities.load_status import LoadStatus
+from domain.logistics.repositories.load_repository import LoadRepository
 
 class TreatmentReceptionService:
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
-        from domain.logistics.repositories.load_repository import LoadRepository
         self.load_repo = LoadRepository(db_manager)
 
     def get_pending_reception_loads(self, plant_id: int) -> List[Load]:

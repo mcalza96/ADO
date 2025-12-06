@@ -1,4 +1,5 @@
 from typing import List
+from datetime import datetime
 from infrastructure.persistence.database_manager import DatabaseManager
 from infrastructure.persistence.generic_repository import BaseRepository
 from domain.shared.entities.location import Plot
@@ -7,6 +8,7 @@ from domain.disposal.entities.disposal_method import SoilSample
 from domain.shared.services.compliance_validator import ComplianceValidator
 from domain.logistics.repositories.load_repository import LoadRepository
 from domain.logistics.entities.load import Load
+from domain.logistics.entities.load_status import LoadStatus
 
 
 class DisposalService:
@@ -92,8 +94,6 @@ class DisposalService:
         Returns:
             List of loads ready for disposal
         """
-        from domain.logistics.entities.load_status import LoadStatus
-        
         loads = self.load_repo.get_by_status(LoadStatus.AT_DESTINATION.value)
         return [l for l in loads if l.destination_site_id == site_id]
 
@@ -149,9 +149,6 @@ class DisposalService:
         Returns:
             True if successful
         """
-        from datetime import datetime
-        from domain.logistics.entities.load_status import LoadStatus
-        
         load = self.load_repo.get_by_id(load_id)
         if not load:
             raise ValueError(f"Load {load_id} not found")

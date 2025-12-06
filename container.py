@@ -32,6 +32,11 @@ from domain.logistics.entities.container import Container
 
 from domain.disposal.services.location_service import LocationService
 from domain.logistics.services.dispatch_service import LogisticsDomainService
+from domain.logistics.services.load_state_service import LoadStateService
+from domain.logistics.services.load_planning_service import LoadPlanningService
+from domain.logistics.services.load_dispatch_service import LoadDispatchService
+from domain.logistics.services.load_reception_service import LoadReceptionService
+from domain.logistics.services.trip_linking_service import TripLinkingService
 from domain.logistics.application.logistics_app_service import LogisticsApplicationService
 from domain.logistics.services.pickup_request_service import PickupRequestService
 from domain.disposal.services.agronomy_service import AgronomyDomainService
@@ -138,13 +143,32 @@ def get_container() -> SimpleNamespace:
     # Manifest Service
     manifest_service = ManifestService(db_manager, compliance_service)
 
-    # Logistics Domain Service
+    # --- NEW: Specialized Logistics Services (Refactored from LogisticsDomainService) ---
+    
+    # 1. State Management Service
+    load_state_service = LoadStateService(
+        db_manager=db_manager,
+        event_bus=event_bus
+    )
+    
+    # 2. Planning Service
+    load_planning_service = LoadPlanningService(db_manager=db_manager)
+    
+    # 3. Dispatch Service
+    load_dispatch_service = LoadDispatchService(db_manager=db_manager)
+    
+    # 4. Reception Service
+    load_reception_service = LoadReceptionService(db_manager=db_manager)
+    
+    # 5. Trip Linking Service
+    trip_linking_service = TripLinkingService(db_manager=db_manager)
+
+    # Logistics Domain Service (Legacy - maintained for backward compatibility)
+    # TODO: Gradually migrate UI to use specialized services above
     logistics_service = LogisticsDomainService(
         db_manager,
         compliance_service,
         agronomy_service,
-        # manifest_service,  # Removed: Injected in App Service
-        # event_bus=event_bus # Removed: Injected in App Service
     )
     
     # Machinery Service
@@ -265,6 +289,14 @@ def get_container() -> SimpleNamespace:
         reception_service=reception_service,
         logistics_service=logistics_service,
         logistics_app_service=logistics_app_service,
+        
+        # NEW: Specialized Logistics Services
+        load_state_service=load_state_service,
+        load_planning_service=load_planning_service,
+        load_dispatch_service=load_dispatch_service,
+        load_reception_service=load_reception_service,
+        trip_linking_service=trip_linking_service,
+        
         treatment_reception_service=treatment_reception_service,
         treatment_app_service=treatment_app_service,
         client_service=client_service,
