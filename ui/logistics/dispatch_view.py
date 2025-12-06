@@ -428,7 +428,6 @@ def _handle_dispatch_submit(
         st.session_state.accepted_trips.discard(load_id)
         
         st.success(f"✅ ¡Despacho confirmado! Viaje #{load_id} en ruta hacia destino.")
-        st.balloons()
         st.rerun()
         
     except ValueError as e:

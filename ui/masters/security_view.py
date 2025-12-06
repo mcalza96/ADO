@@ -218,7 +218,6 @@ def _render_new_user_form(auth_service) -> None:
                     )
                     if new_user:
                         st.success(f"✅ Usuario '{username}' creado exitosamente")
-                        st.balloons()
                     else:
                         st.error("❌ Error al crear usuario (puede que ya exista)")
                 except Exception as e:

@@ -15,7 +15,6 @@ from ui.registry import UIRegistry, MenuItem
 
 # Importar vistas refactorizadas desde el nuevo módulo de logística
 from ui.logistics.dispatch_view import dispatch_page
-from ui.logistics.field_reception_view import field_reception_page
 from ui.logistics.tracking_view import tracking_page
 
 # Para planificación, usar la vista refactorizada con Presenter
@@ -66,19 +65,6 @@ UIRegistry.register(
         order=10,
         description="Despachar cargas hacia predios",
         visible_for_roles=["Admin", "Operador", "Planificador"]
-    )
-)
-
-UIRegistry.register(
-    category="Operaciones Logísticas",
-    item=MenuItem(
-        title="Recepción en Campo",
-        icon="📦",
-        page_func=field_reception_page,
-        permission_required="reception",
-        order=20,
-        description="Registrar llegada de cargas",
-        visible_for_roles=["Admin", "Operador"]
     )
 )
 

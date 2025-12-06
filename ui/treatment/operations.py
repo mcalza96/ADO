@@ -8,7 +8,12 @@ delegating each tab's logic to its own dedicated module.
 import streamlit as st
 from ui.styles import apply_industrial_style
 from ui.treatment.tabs import reception_view
-from ui.treatment.ds4_monitoring import ds4_monitoring_view
+from ui.treatment.ds4_monitoring import (
+    _render_container_filling_tab,
+    _render_request_form,
+    _render_request_history,
+    _render_pending_ph_tab
+)
 from ui.utils.inputs import select_entity
 
 
@@ -44,13 +49,25 @@ def treatment_operations_page(container):
     st.divider()
     
     # 2. Render Tabs - Each delegated to its own module
-    tab_reception, tab_ds4 = st.tabs([
-        "📥 Recepción de Lodos", 
-        "🧪 Proceso DS4 (Salida)"
+    tab_reception, tab_llenado, tab_mediciones, tab_solicitar, tab_historial = st.tabs([
+        "📥 Recepción de Lodos",
+        "📦 Llenado de Contenedores",
+        "🧪 Mediciones de pH",
+        "📝 Solicitar Retiro", 
+        "📋 Historial de Solicitudes"
     ])
     
     with tab_reception:
         reception_view.render(treatment_reception_service, plant_id)
     
-    with tab_ds4:
-        ds4_monitoring_view(plant_id, container_service, logistics_service, pickup_request_service, container_tracking_service)
+    with tab_llenado:
+        _render_container_filling_tab(plant_id, container_tracking_service)
+    
+    with tab_mediciones:
+        _render_pending_ph_tab(plant_id, container_tracking_service)
+    
+    with tab_solicitar:
+        _render_request_form(plant_id, pickup_request_service)
+    
+    with tab_historial:
+        _render_request_history(plant_id, pickup_request_service)

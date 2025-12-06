@@ -156,7 +156,6 @@ def _handle_disposal_submit(
             plot_id=plot_id
         )
         st.success(f"✅ Carga #{load_id} dispuesta exitosamente. Viaje completado.")
-        st.balloons()
         st.rerun()
     except ValueError as e:
         st.error(f"❌ Error de validación: {e}")

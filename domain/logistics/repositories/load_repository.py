@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime
 from database.repository import BaseRepository
 from domain.logistics.entities.load import Load
@@ -256,3 +256,101 @@ class LoadRepository(BaseRepository[Load]):
             cursor.execute(query, tuple(params))
             rows = cursor.fetchall()
             return [dict(row) for row in rows]
+
+    def get_loads_by_trip_id(self, trip_id: str) -> List[Load]:
+        """
+        Returns all loads that share the same trip_id.
+        
+        Used for trip linking operations where multiple loads are grouped together.
+        
+        Args:
+            trip_id: UUID of the trip
+            
+        Returns:
+            List of loads in the trip
+        """
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"SELECT * FROM {self.table_name} WHERE trip_id = ? ORDER BY created_at ASC",
+                (trip_id,)
+            )
+            rows = cursor.fetchall()
+            return [self._map_row_to_model(dict(row)) for row in rows]
+
+    def get_pending_loads_by_origin_and_date(
+        self,
+        origin_facility_id: int,
+        date_start: datetime,
+        date_end: datetime
+    ) -> List[Load]:
+        """
+        Returns pending loads (REQUESTED status) from a specific origin within a date range.
+        
+        Used to find candidate loads for trip linking.
+        
+        Args:
+            origin_facility_id: ID of the origin facility
+            date_start: Start of date range
+            date_end: End of date range
+            
+        Returns:
+            List of pending loads matching criteria
+        """
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"""SELECT * FROM {self.table_name} 
+                    WHERE origin_facility_id = ? 
+                    AND status = 'REQUESTED'
+                    AND trip_id IS NULL
+                    AND created_at BETWEEN ? AND ?
+                    ORDER BY created_at ASC""",
+                (origin_facility_id, date_start.isoformat(), date_end.isoformat())
+            )
+            rows = cursor.fetchall()
+            return [self._map_row_to_model(dict(row)) for row in rows]
+
+    def update_trip_id_bulk(self, load_ids: List[int], trip_id: str, segment_types: Dict[int, str]) -> None:
+        """
+        Updates trip_id and segment_type for multiple loads in a single transaction.
+        
+        Used when linking loads into a trip.
+        
+        Args:
+            load_ids: List of load IDs to update
+            trip_id: UUID to assign to all loads
+            segment_types: Map of load_id -> segment_type ('PICKUP_SEGMENT' or 'MAIN_HAUL')
+        """
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            for load_id in load_ids:
+                segment_type = segment_types.get(load_id, 'DIRECT')
+                cursor.execute(
+                    f"""UPDATE {self.table_name} 
+                        SET trip_id = ?, segment_type = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?""",
+                    (trip_id, segment_type, load_id)
+                )
+            conn.commit()
+
+    def update_financial_status_bulk(self, load_ids: List[int], status: str) -> None:
+        """
+        Updates financial_status for multiple loads.
+        
+        Args:
+            load_ids: List of load IDs to update
+            status: New status ('OPEN', 'CLOSED', 'BILLED')
+        """
+        with self.db_manager as conn:
+            cursor = conn.cursor()
+            # SQLite doesn't support array parameters directly, so we loop or build dynamic query
+            # For safety and simplicity with small batches, we'll loop or use executemany
+            # executemany is better
+            
+            params = [(status, load_id) for load_id in load_ids]
+            cursor.executemany(
+                f"UPDATE {self.table_name} SET financial_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                params
+            )
+            conn.commit()

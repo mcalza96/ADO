@@ -39,7 +39,6 @@ def inbox_page(container, user_role: str, user_id: int):
     
     if not tasks:
         st.success("🎉 ¡No tienes tareas pendientes!")
-        st.balloons()
         st.info("Cuando haya tareas nuevas, aparecerán aquí automáticamente.")
         return
 
@@ -159,7 +158,6 @@ def _process_load_task(container, task, form_data, user_role: str, user_id: int)
     if success:
         st.success("✅ Tarea completada exitosamente")
         st.info(f"📊 Carga #{load.id} avanzó a estado: **{target_status.value}**")
-        st.balloons()
         _clear_and_reload()
     else:
         st.warning("⚠️ La tarea se guardó pero la transición no pudo completarse automáticamente.")
@@ -177,7 +175,6 @@ def _process_machine_task(container, task, form_data):
     
     st.success("✅ Parte Diario registrado exitosamente")
     st.info(f"🚜 Máquina #{log_data['machine_id']} - Horas trabajadas: {log_data['hours_worked']:.1f}")
-    st.balloons()
     _clear_and_reload()
 
 

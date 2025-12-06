@@ -21,3 +21,19 @@ class TransitionException(DomainException):
 class ComplianceViolationError(ComplianceException):
     """Raised when a dispatch is blocked due to compliance violations (hard constraints)."""
     pass
+
+class FinanceException(DomainException):
+    """Base class for financial domain exceptions."""
+    pass
+
+class MissingTariffError(FinanceException):
+    """Raised when no applicable tariff is found for a given operation."""
+    pass
+
+class InvalidRouteError(FinanceException):
+    """Raised when a required route is not found in the distance matrix."""
+    pass
+
+class InvalidFuelPriceError(FinanceException):
+    """Raised when base fuel price is zero or negative, preventing polynomial calculation."""
+    pass

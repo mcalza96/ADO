@@ -111,6 +111,11 @@ class GenericCrudService(BaseService, Generic[T]):
         """Alias for get_all() - for Contractor entities."""
         return self.get_all(active_only=active_only)
     
+    def get_contractors_by_type(self, contractor_type: str, active_only: bool = True) -> List[T]:
+        """Get contractors filtered by type (TRANSPORT, DISPOSAL, etc.)."""
+        all_contractors = self.get_all(active_only=active_only)
+        return [c for c in all_contractors if getattr(c, 'contractor_type', None) == contractor_type]
+    
     def get_drivers_by_contractor(self, contractor_id: int) -> List[T]:
         """Get drivers filtered by contractor."""
         return self.repo.get_all_filtered(contractor_id=contractor_id, is_active=1)

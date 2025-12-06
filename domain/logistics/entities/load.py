@@ -58,6 +58,13 @@ class Load:
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     created_by_user_id: Optional[int] = None
+    
+    # Financial Status
+    financial_status: str = 'OPEN'  # OPEN, CLOSED, BILLED
+    
+    # Link/Enlace Support
+    trip_id: Optional[str] = None  # Agrupa tramos de un mismo viaje con enlace
+    segment_type: str = 'DIRECT'  # DIRECT, LINK_T1 (primer tramo), LINK_T2 (segundo tramo)
 
     def calculate_net_weight(self) -> None:
         """

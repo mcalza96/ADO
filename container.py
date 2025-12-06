@@ -54,6 +54,15 @@ from domain.agronomy.services.machinery_service import MachineryService
 from domain.agronomy.repositories.machine_log_repository import MachineLogRepository
 from domain.agronomy.services.field_reception_handler import FieldReceptionHandler
 
+# Financial Reporting (Phase 5)
+from domain.finance.repositories.economic_indicators_repository import EconomicIndicatorsRepository
+from domain.finance.repositories.proforma_repository import ProformaRepository
+from domain.finance.repositories.contractor_tariffs_repository import ContractorTariffsRepository
+from domain.finance.repositories.client_tariffs_repository import ClientTariffsRepository
+from domain.finance.repositories.disposal_site_tariffs_repository import DisposalSiteTariffsRepository
+from domain.logistics.repositories.distance_matrix_repository import DistanceMatrixRepository
+from domain.finance.services.financial_reporting_service import FinancialReportingService
+
 # Satellite Modules (Phase 3)
 from domain.maintenance.services.maintenance_listener import MaintenanceListener
 from domain.compliance.services.compliance_listener import ComplianceListener
@@ -103,6 +112,14 @@ def get_container() -> SimpleNamespace:
     load_repo = LoadRepository(db_manager)
     reporting_repo = ReportingRepository(db_manager)
     machine_log_repo = MachineLogRepository(db_manager)
+    
+    # Financial Repositories
+    economic_indicators_repo = EconomicIndicatorsRepository(db_manager)
+    proforma_repo = ProformaRepository(db_manager)
+    contractor_tariffs_repo = ContractorTariffsRepository(db_manager)
+    client_tariffs_repo = ClientTariffsRepository(db_manager)
+    disposal_site_tariffs_repo = DisposalSiteTariffsRepository(db_manager)
+    distance_matrix_repo = DistanceMatrixRepository(db_manager)
     
     # Initialize Services with dependency injection
     location_service = LocationService(site_repo, plot_repo)
@@ -194,6 +211,29 @@ def get_container() -> SimpleNamespace:
     # Task Resolver (UI Service)
     task_resolver = TaskResolver(load_repo, machine_log_repo)
     
+    # Financial Reporting Service
+    financial_reporting_service = FinancialReportingService(
+        load_repo=load_repo,
+        economic_repo=economic_indicators_repo,
+        contractor_tariffs_repo=contractor_tariffs_repo,
+        client_tariffs_repo=client_tariffs_repo,
+        distance_repo=distance_matrix_repo,
+        disposal_site_tariffs_repo=disposal_site_tariffs_repo,
+        proforma_repo=proforma_repo  # New: Proforma repository for payment states
+    )
+    
+    # Financial Export Service
+    from infrastructure.reporting.financial_export_service import FinancialExportService
+    financial_export_service = FinancialExportService()
+    
+    # Accounting Closure Service
+    from domain.finance.services.accounting_closure_service import AccountingClosureService
+    accounting_closure_service = AccountingClosureService(
+        economic_repo=economic_indicators_repo,
+        load_repo=load_repo,
+        reporting_service=financial_reporting_service
+    )
+    
     # Return a simple container object with services as attributes
     return SimpleNamespace(
         db_manager=db_manager,
@@ -226,4 +266,15 @@ def get_container() -> SimpleNamespace:
         task_resolver=task_resolver,
         pickup_request_service=pickup_request_service,  # Client pickup requests
         container_tracking_service=container_tracking_service,  # DS4 container tracking
+        financial_reporting_service=financial_reporting_service,  # Financial settlement reports
+        financial_export_service=financial_export_service, # Financial Excel/PDF export
+        accounting_closure_service=accounting_closure_service, # Accounting period closure
+        
+        # Financial Repositories (exposed for UI configuration)
+        economic_indicators_repo=economic_indicators_repo,
+        proforma_repo=proforma_repo,  # New: Proforma master repository
+        distance_matrix_repo=distance_matrix_repo,
+        contractor_tariffs_repo=contractor_tariffs_repo,
+        client_tariffs_repo=client_tariffs_repo,
     )
+

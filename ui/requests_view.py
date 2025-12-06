@@ -168,7 +168,6 @@ def _render_new_request_form(client_id: int, facility_service, pickup_service):
                 
                 El equipo de planificación asignará los recursos necesarios.
                 """)
-                st.balloons()
                 
             except ValueError as e:
                 st.error(f"❌ Error de validación: {e}")

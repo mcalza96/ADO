@@ -12,6 +12,7 @@ from ui.operations.dashboard_view import dashboard_page
 from ui.reporting.client_portal import client_portal_page
 from ui.reporting.logistics_dashboard import logistics_dashboard_page
 from ui.reporting.agronomy_dashboard import agronomy_dashboard_page
+from ui.reporting.financial_portal import financial_portal_page
 
 # Import Registry-based modules (auto-register their pages)
 import ui.modules.logistics  # Auto-registers: Despacho, Recepción, Planificación, Tracking
@@ -138,7 +139,7 @@ def main():
             # Sub-navigation for Reportes
             report_menu = st.sidebar.radio(
                 "Vistas de Inteligencia",
-                ["Torre de Control (Logística)", "Drill-Down Agronómico", "Vista Cliente (Simulada)"]
+                ["Torre de Control (Logística)", "Drill-Down Agronómico", "Vista Cliente (Simulada)", "Estados de Pago"]
             )
             
             if report_menu == "Torre de Control (Logística)":
@@ -147,6 +148,8 @@ def main():
                 agronomy_dashboard_page(container.reporting_service, container.location_service, container.agronomy_service)
             elif report_menu == "Vista Cliente (Simulada)":
                 client_portal_page(container.reporting_service)
+            elif report_menu == "Estados de Pago":
+                financial_portal_page(container)
                 
         elif selection == "Configuración":
             config_page(container)

@@ -1,5 +1,5 @@
 import streamlit as st
-from domain.logistics.entities.contractor import Contractor
+from domain.logistics.entities.contractor import Contractor, ContractorType
 from domain.logistics.entities.vehicle import Vehicle, VehicleType
 from domain.logistics.entities.driver import Driver
 from ui.generic_master_view import GenericMasterView, FieldConfig
@@ -15,21 +15,44 @@ def render(driver_service, vehicle_service, contractor_service, container_servic
         contractor_service: Servicio de contratistas
         container_service: Servicio de contenedores (opcional para compatibilidad)
     """
-    st.header("🚛 Gestión de Transporte")
+    st.header("Gestión de Transporte")
     
-    tab1, tab2, tab3, tab4 = st.tabs(["Contratistas", "Choferes", "Camiones", "📦 Contenedores"])
+    # Función para obtener solo contratistas de transporte
+    get_transport_contractors = lambda: contractor_service.get_contractors_by_type('TRANSPORT')
+    
+    # Función para obtener solo choferes de contratistas de transporte
+    def get_transport_drivers():
+        transport_contractor_ids = {c.id for c in get_transport_contractors()}
+        all_drivers = driver_service.get_all()
+        return [d for d in all_drivers if d.contractor_id in transport_contractor_ids]
+    
+    # Función para obtener solo vehículos de contratistas de transporte
+    def get_transport_vehicles():
+        transport_contractor_ids = {c.id for c in get_transport_contractors()}
+        all_vehicles = vehicle_service.get_all()
+        return [v for v in all_vehicles if v.contractor_id in transport_contractor_ids]
+    
+    tab1, tab2, tab3, tab4 = st.tabs(["Contratistas", "Choferes", "Camiones", "Contenedores"])
     
     with tab1:
         GenericMasterView(
             service=contractor_service, 
             model_class=Contractor, 
             title="Contratistas",
-            display_columns=["name", "rut", "phone"],
+            display_columns=["name", "rut", "phone", "contractor_type"],
+            data_source=get_transport_contractors,
             form_config={
                 "name": FieldConfig(label="Nombre Empresa", required=True),
                 "rut": FieldConfig(label="RUT", required=True),
                 "contact_name": FieldConfig(label="Contacto"),
-                "phone": FieldConfig(label="Teléfono")
+                "phone": FieldConfig(label="Teléfono"),
+                "contractor_type": FieldConfig(
+                    label="Tipo de Proveedor",
+                    widget="enum",
+                    enum_class=ContractorType,
+                    default=ContractorType.TRANSPORT.value,
+                    help="Tipo de servicio que presta el contratista"
+                )
             }
         ).render()
         
@@ -40,6 +63,7 @@ def render(driver_service, vehicle_service, contractor_service, container_servic
             model_class=Driver,
             title="Choferes",
             display_columns=["name", "rut", "license_number", "contractor_id"],
+            data_source=get_transport_drivers,
             form_config={
                 "name": FieldConfig(label="Nombre Completo", required=True),
                 "rut": FieldConfig(label="RUT", required=True),
@@ -47,7 +71,7 @@ def render(driver_service, vehicle_service, contractor_service, container_servic
                 "contractor_id": FieldConfig(
                     label="Contratista",
                     widget="selectbox",
-                    options=contractor_service,
+                    options=get_transport_contractors,
                     required=True
                 )
             }
@@ -60,6 +84,7 @@ def render(driver_service, vehicle_service, contractor_service, container_servic
             model_class=Vehicle,
             title="Camiones",
             display_columns=["license_plate", "brand", "model", "type", "contractor_id"],
+            data_source=get_transport_vehicles,
             form_config={
                 "license_plate": FieldConfig(label="Patente", required=True),
                 "brand": FieldConfig(label="Marca"),
@@ -86,7 +111,7 @@ def render(driver_service, vehicle_service, contractor_service, container_servic
                 "contractor_id": FieldConfig(
                     label="Contratista",
                     widget="selectbox",
-                    options=contractor_service,
+                    options=get_transport_contractors,
                     required=True
                 )
             }

@@ -35,6 +35,15 @@ class ScheduledLoadViewModel:
     estado: str
 
 
+@dataclass
+class LinkOpportunityViewModel:
+    """ViewModel para mostrar oportunidades de enlace de cargas."""
+    primary_load_id: int
+    candidate_count: int
+    route_description: str  # "Los Álamos → Cañete"
+    potential_savings: str  # "Ahorro estimado: 45 km"
+
+
 class PlanningPresenter:
     """
     Presenter para la vista de planificación.
@@ -96,7 +105,7 @@ class PlanningPresenter:
         }
         
         # Columnas ocultas necesarias para lógica (no se muestran pero se usan)
-        hidden_columns = ['origin_allowed_vehicle_types']
+        hidden_columns = ['origin_allowed_vehicle_types', 'trip_id']
         
         # Seleccionar columnas visibles y ocultas
         available_visible = [col for col in column_mapping.keys() if col in df.columns]
@@ -179,3 +188,63 @@ class PlanningPresenter:
             return []
         
         return df.iloc[selected_rows]["ID"].tolist()
+    
+    @staticmethod
+    def format_linkable_candidates(candidates: List[dict]) -> pd.DataFrame:
+        """
+        Transforma lista de cargas candidatas para enlace en DataFrame para visualización.
+        
+        Args:
+            candidates: Lista de dicts con keys: id, origin_name, distance_km, created_at
+            
+        Returns:
+            DataFrame con columnas: ID, Origen, Distancia (km), Fecha Solicitud
+        """
+        if not candidates:
+            return pd.DataFrame()
+        
+        df = pd.DataFrame(candidates)
+        
+        # Formatear fecha
+        if 'created_at' in df.columns:
+            df['Fecha Solicitud'] = pd.to_datetime(df['created_at'], errors='coerce').dt.strftime('%d/%m/%Y %H:%M')
+        else:
+            df['Fecha Solicitud'] = '-'
+        
+        # Mapeo de columnas
+        column_mapping = {
+            'id': 'ID',
+            'origin_name': 'Origen',
+            'distance_km': 'Distancia (km)'
+        }
+        
+        # Renombrar y seleccionar columnas
+        df = df.rename(columns=column_mapping)
+        display_columns = ['ID', 'Origen', 'Distancia (km)', 'Fecha Solicitud']
+        available = [col for col in display_columns if col in df.columns]
+        
+        return df[available]
+    
+    @staticmethod
+    def get_trip_id(df: pd.DataFrame, selected_rows: List[int]) -> Optional[str]:
+        """
+        Extrae el trip_id común de las cargas seleccionadas.
+        
+        Args:
+            df: DataFrame con las cargas (debe tener columna 'trip_id' oculta)
+            selected_rows: Índices de filas seleccionadas
+            
+        Returns:
+            trip_id común, o None si no hay o son inconsistentes
+        """
+        if not selected_rows or df.empty or 'trip_id' not in df.columns:
+            return None
+        
+        trip_ids = df.iloc[selected_rows]['trip_id'].dropna().unique()
+        
+        # Si todas las cargas seleccionadas comparten el mismo trip_id, retornarlo
+        if len(trip_ids) == 1:
+            return trip_ids[0]
+        
+        # Si hay múltiples o ninguno, retornar None
+        return None

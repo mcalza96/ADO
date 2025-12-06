@@ -185,6 +185,28 @@ def _render_request_card(request, pickup_request_service, show_cancel: bool = Fa
 # Container Filling Tab
 # =============================================================================
 
+def _render_pending_ph_tab(plant_id: int, container_tracking_service):
+    """Renderiza la pestaña dedicada a mediciones de pH pendientes."""
+    st.markdown("### 🧪 Mediciones de pH Pendientes")
+    st.info(
+        "⏰ **Monitoreo de Estabilización:** Esta sección muestra los contenedores que requieren "
+        "mediciones de pH a las 2h y 24h después del llenado. Las mediciones se habilitan "
+        "automáticamente cuando transcurre el tiempo requerido."
+    )
+    
+    if st.button("🔄 Actualizar"):
+        st.rerun()
+    
+    st.divider()
+    
+    _render_pending_ph_section(plant_id, container_tracking_service)
+    
+    st.divider()
+    
+    # Historial de contenedores
+    _render_container_history(plant_id, container_tracking_service)
+
+
 def _render_container_filling_tab(plant_id: int, container_tracking_service):
     """Renderiza la pestaña de llenado de contenedores con pH y humedad."""
     
@@ -203,16 +225,6 @@ def _render_container_filling_tab(plant_id: int, container_tracking_service):
     
     # Sección 1: Nuevo registro de llenado
     _render_new_filling_form(plant_id, container_tracking_service)
-    
-    st.divider()
-    
-    # Sección 2: Contenedores con pH pendiente
-    _render_pending_ph_section(plant_id, container_tracking_service)
-    
-    st.divider()
-    
-    # Sección 3: Historial de contenedores
-    _render_container_history(plant_id, container_tracking_service)
 
 
 def _render_new_filling_form(plant_id: int, container_tracking_service):
@@ -309,18 +321,41 @@ def _render_pending_ph_section(plant_id: int, container_tracking_service):
     """Muestra contenedores con mediciones de pH pendientes."""
     st.markdown("#### 🕐 Mediciones de pH Pendientes")
     
-    # Obtener TODOS los registros activos (no despachados)
+    # Obtener TODOS los registros (incluyendo despachados)
+    # ya que se mantienen frascos testigo para hacer las pruebas en planta
     all_records = container_tracking_service.get_active_records_by_plant(plant_id)
-    active_records = [r for r in all_records 
-                      if r.status != ContainerFillingStatus.DISPATCHED.value]
     
-    if not active_records:
+    # Filtrar solo los que tienen al menos una medición pendiente
+    pending_records = [r for r in all_records 
+                       if r.ph_2h is None or r.ph_24h is None]
+    
+    if not pending_records:
         st.info("✅ No hay contenedores con mediciones de pH pendientes.")
         return
     
-    # Mostrar cada contenedor con su estado de mediciones
-    for record in active_records:
-        with st.container():
+    # Separar por estado de despacho para mejor visualización
+    not_dispatched = [r for r in pending_records 
+                      if r.status != ContainerFillingStatus.DISPATCHED.value]
+    dispatched = [r for r in pending_records 
+                  if r.status == ContainerFillingStatus.DISPATCHED.value]
+    
+    # Mostrar primero los no despachados
+    if not_dispatched:
+        st.markdown("##### 📦 Contenedores en Planta")
+        for record in not_dispatched:
+            _render_ph_measurement_card(record, container_tracking_service)
+    
+    # Mostrar despachados (con muestras testigo)
+    if dispatched:
+        st.markdown("##### 🚚 Contenedores Despachados (Muestras Testigo)")
+        st.caption("Estos contenedores ya fueron despachados pero mantienen frascos testigo para completar mediciones")
+        for record in dispatched:
+            _render_ph_measurement_card(record, container_tracking_service)
+
+
+def _render_ph_measurement_card(record, container_tracking_service):
+    """Renderiza una tarjeta individual para mediciones de pH."""
+    with st.container():
             # Header del contenedor
             col_header, col_status = st.columns([3, 1])
             with col_header:
@@ -341,8 +376,23 @@ def _render_pending_ph_section(plant_id: int, container_tracking_service):
                 if record.ph_2h is not None:
                     st.metric("pH₂ (2 horas)", f"{record.ph_2h:.1f}")
                 elif record.can_record_ph_2h:
-                    # Listo para medir
-                    _render_ph_input_inline(record, 'ph_2h', container_tracking_service)
+                    # Listo para medir - usar formulario
+                    with st.form(key=f"form_ph2h_{record.id}"):
+                        ph_2h_value = st.number_input(
+                            "pH₂ (2h) *",
+                            min_value=0.0,
+                            max_value=14.0,
+                            value=12.0,
+                            step=0.1,
+                            help="pH medido a las 2 horas"
+                        )
+                        if st.form_submit_button("💾 Guardar pH₂", type="primary"):
+                            try:
+                                container_tracking_service.update_ph_2h(record.id, ph_2h_value)
+                                st.success(f"✓ pH₂ guardado: {ph_2h_value:.1f}")
+                                st.rerun()
+                            except ValueError as e:
+                                st.error(str(e))
                 else:
                     # Esperando tiempo
                     time_remaining = record.time_until_ph_2h
@@ -356,8 +406,23 @@ def _render_pending_ph_section(plant_id: int, container_tracking_service):
                 if record.ph_24h is not None:
                     st.metric("pH₂₄ (24 horas)", f"{record.ph_24h:.1f}")
                 elif record.can_record_ph_24h:
-                    # Listo para medir
-                    _render_ph_input_inline(record, 'ph_24h', container_tracking_service)
+                    # Listo para medir - usar formulario
+                    with st.form(key=f"form_ph24h_{record.id}"):
+                        ph_24h_value = st.number_input(
+                            "pH₂₄ (24h) *",
+                            min_value=0.0,
+                            max_value=14.0,
+                            value=12.0,
+                            step=0.1,
+                            help="pH medido a las 24 horas"
+                        )
+                        if st.form_submit_button("💾 Guardar pH₂₄", type="primary"):
+                            try:
+                                container_tracking_service.update_ph_24h(record.id, ph_24h_value)
+                                st.success(f"✓ pH₂₄ guardado: {ph_24h_value:.1f}")
+                                st.rerun()
+                            except ValueError as e:
+                                st.error(str(e))
                 else:
                     # Esperando tiempo
                     time_remaining = record.time_until_ph_24h
