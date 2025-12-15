@@ -48,10 +48,10 @@ def disposal_operations_page(container) -> None:
     ])
     
     with tab_reception:
-        reception_view.render(disposal_service, site_id)
+        reception_view.render(container, site_id)
     
     with tab_disposal:
-        disposal_view.render(disposal_service, site_id)
+        disposal_view.render(container, site_id)
     
     with tab_prep:
         preparation_view.render(site_prep_service, site_id)

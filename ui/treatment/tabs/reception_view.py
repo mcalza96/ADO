@@ -31,11 +31,25 @@ def render(container: Any, plant_id: int) -> None:
     app_service = getattr(container, 'treatment_app_service', None)
     legacy_service = getattr(container, 'treatment_reception_service', None)
     
+    # DEBUG: Mostrar qué servicio se está usando
+    st.caption(f"🔍 Debug: app_service={app_service is not None}, legacy_service={legacy_service is not None}, plant_id={plant_id}")
+    
     pending = []
-    if app_service:
-        pending = app_service.get_incoming_loads(plant_id)
-    elif legacy_service:
-        pending = _get_in_transit_loads_legacy(legacy_service, plant_id)
+    try:
+        if app_service:
+            st.caption(f"🔍 Usando app_service.get_incoming_loads({plant_id})")
+            pending = app_service.get_incoming_loads(plant_id)
+            st.caption(f"🔍 Resultado: {len(pending)} cargas")
+        elif legacy_service:
+            st.caption(f"🔍 Usando legacy_service")
+            pending = _get_in_transit_loads_legacy(legacy_service, plant_id)
+            st.caption(f"🔍 Resultado: {len(pending)} cargas")
+        else:
+            st.error("❌ No hay servicio disponible (app ni legacy)")
+    except Exception as e:
+        st.error(f"❌ Error al obtener cargas: {e}")
+        import traceback
+        st.code(traceback.format_exc())
     
     if not pending:
         st.info("No hay cargas en ruta hacia esta planta.")

@@ -6,13 +6,24 @@ Inserta:
 - Tarifas de contratistas (costos)
 - Tarifas de clientes (ingresos)
 - Distancias de rutas
+
+IMPORTANTE: Este script usa la configuración centralizada de DB desde settings.py
 """
 
 import sqlite3
+import sys
+import os
 from datetime import datetime
 
+# Importar configuración centralizada
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config.settings import DB_PATH
+
 def insert_test_data():
-    conn = sqlite3.connect('ado_system.db')
+    """Inserta datos de prueba para el módulo de reportes financieros."""
+    print(f"📊 Insertando datos de prueba en: {DB_PATH}")
+    
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
     print("🔧 Insertando datos de prueba para Reportes Financieros...")

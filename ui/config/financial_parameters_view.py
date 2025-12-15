@@ -21,25 +21,24 @@ from container import get_container
 # HELPER FUNCTIONS - Data Loading
 # ==============================================================================
 
-def _load_clients() -> List[Dict[str, Any]]:
+def _load_clients(client_service) -> List[Dict[str, Any]]:
     """Carga clientes desde la base de datos."""
-    container = get_container()
-    clients = container.client_service.get_all()
+    clients = client_service.get_all()
     return [{"id": c.id, "name": c.name, "rut": c.rut or ""} for c in clients]
 
 
-def _load_facilities(client_id: Optional[int] = None) -> List[Dict[str, Any]]:
+def _load_facilities(facility_service, client_id: Optional[int] = None) -> List[Dict[str, Any]]:
     """
     Carga facilities (plantas de cliente/origen) desde la base de datos.
     
     Args:
+        facility_service: Servicio de facilities inyectado
         client_id: Si se proporciona, filtra solo las de ese cliente
     """
-    container = get_container()
     if client_id:
-        facilities = container.facility_service.get_by_client(client_id)
+        facilities = facility_service.get_by_client(client_id)
     else:
-        facilities = container.facility_service.get_all()
+        facilities = facility_service.get_all()
     
     return [{
         "id": f.id,
@@ -50,13 +49,15 @@ def _load_facilities(client_id: Optional[int] = None) -> List[Dict[str, Any]]:
     } for f in facilities]
 
 
-def _load_treatment_plants() -> List[Dict[str, Any]]:
+def _load_treatment_plants(treatment_plant_service) -> List[Dict[str, Any]]:
     """
     Carga plantas de tratamiento propias desde la base de datos.
     Estas siempre aparecen como destinos disponibles.
+    
+    Args:
+        treatment_plant_service: Servicio de plantas de tratamiento inyectado
     """
-    container = get_container()
-    plants = container.treatment_plant_service.get_all()
+    plants = treatment_plant_service.get_all()
     return [{
         "id": p.id,
         "name": p.name,
@@ -64,10 +65,13 @@ def _load_treatment_plants() -> List[Dict[str, Any]]:
     } for p in plants]
 
 
-def _load_sites() -> List[Dict[str, Any]]:
-    """Carga sitios/campos de disposición desde la base de datos."""
-    container = get_container()
-    sites = container.location_service.get_all_sites()
+def _load_sites(location_service) -> List[Dict[str, Any]]:
+    """Carga sitios/campos de disposición desde la base de datos.
+    
+    Args:
+        location_service: Servicio de ubicaciones inyectado
+    """
+    sites = location_service.get_all_sites()
     return [{
         "id": s.id,
         "name": s.name,
@@ -76,10 +80,13 @@ def _load_sites() -> List[Dict[str, Any]]:
     } for s in sites]
 
 
-def _load_contractors() -> List[Dict[str, Any]]:
-    """Carga contratistas desde la base de datos."""
-    container = get_container()
-    contractors = container.contractor_service.get_all()
+def _load_contractors(contractor_service) -> List[Dict[str, Any]]:
+    """Carga contratistas desde la base de datos.
+    
+    Args:
+        contractor_service: Servicio de contratistas inyectado
+    """
+    contractors = contractor_service.get_all()
     return [{"id": c.id, "name": c.name, "rut": c.rut or ""} for c in contractors]
 
 
@@ -98,9 +105,21 @@ def render(economic_repo=None, distance_repo=None, contractor_tariffs_repo=None,
         distance_repo: Repositorio de matriz de distancias (DistanceMatrixRepository)
         contractor_tariffs_repo: Repositorio de tarifas de contratistas (ContractorTariffsRepository)
         client_tariffs_repo: Repositorio de tarifas de clientes (ClientTariffsRepository)
+        facility_service: Servicio de facilities
+        site_service: Servicio de sitios (alias de location_service)
+        contractor_service: Servicio de contratistas
+        client_service: Servicio de clientes
     """
     st.title("💰 Parámetros Financieros")
     st.markdown("**Configuración de datos maestros para el motor de cálculo de tarifas**")
+    
+    # Obtener servicios del container si no fueron inyectados
+    container = get_container()
+    client_service = client_service or container.client_service
+    facility_service = facility_service or container.facility_service
+    location_service = site_service or container.location_service
+    contractor_service = contractor_service or container.contractor_service
+    treatment_plant_service = container.treatment_plant_service
     
     # Inicializar estado de la sesión
     if 'finance_success_msg' not in st.session_state:
@@ -134,10 +153,10 @@ def render(economic_repo=None, distance_repo=None, contractor_tariffs_repo=None,
         _render_economic_indicators_tab()
     
     with tab2:
-        _render_distance_matrix_tab(distance_repo)
+        _render_distance_matrix_tab(distance_repo, client_service, facility_service, location_service, treatment_plant_service)
     
     with tab3:
-        _render_tariffs_tab()
+        _render_tariffs_tab(client_service, contractor_service)
 
 
 # ==============================================================================
@@ -488,7 +507,7 @@ def _render_new_proforma_form(proforma_repo, proformas, first_proforma):
 # TAB 2: DISTANCE MATRIX
 # ==============================================================================
 
-def _render_distance_matrix_tab(distance_repo):
+def _render_distance_matrix_tab(distance_repo, client_service, facility_service, location_service, treatment_plant_service):
     """
     Renderiza el tab de Matriz de Distancias con datos reales.
     
@@ -497,6 +516,13 @@ def _render_distance_matrix_tab(distance_repo):
     - Validación de duplicados
     - Edición de distancias existentes
     - Persistencia en base de datos
+    
+    Args:
+        distance_repo: Repositorio de distancias
+        client_service: Servicio de clientes
+        facility_service: Servicio de facilities
+        location_service: Servicio de ubicaciones (sitios)
+        treatment_plant_service: Servicio de plantas de tratamiento
     """
     st.header("🛣️ Matriz de Distancias")
     st.markdown("""
@@ -504,23 +530,31 @@ def _render_distance_matrix_tab(distance_repo):
     Las **plantas de tratamiento propias** siempre aparecen como destinos disponibles.
     """)
     
-    # Cargar datos reales
-    clients = _load_clients()
-    treatment_plants = _load_treatment_plants()
-    sites = _load_sites()
+    # Cargar datos reales usando servicios inyectados
+    clients = _load_clients(client_service)
+    treatment_plants = _load_treatment_plants(treatment_plant_service)
+    sites = _load_sites(location_service)
     
     # Subtabs para organizar
     sub_tab_new, sub_tab_existing = st.tabs(["➕ Nueva Ruta", "📋 Rutas Existentes"])
     
     with sub_tab_new:
-        _render_new_route_form(distance_repo, clients, treatment_plants, sites)
+        _render_new_route_form(distance_repo, clients, treatment_plants, sites, facility_service)
     
     with sub_tab_existing:
         _render_existing_routes(distance_repo, clients)
 
 
-def _render_new_route_form(distance_repo, clients, treatment_plants, sites):
-    """Formulario para crear nueva ruta."""
+def _render_new_route_form(distance_repo, clients, treatment_plants, sites, facility_service):
+    """Formulario para crear nueva ruta.
+    
+    Args:
+        distance_repo: Repositorio de distancias
+        clients: Lista de clientes
+        treatment_plants: Lista de plantas de tratamiento
+        sites: Lista de sitios
+        facility_service: Servicio de facilities para cargar facilities dinámicamente
+    """
     st.subheader("Configurar Nueva Ruta")
     
     # =========================================================================
@@ -538,8 +572,8 @@ def _render_new_route_form(distance_repo, clients, treatment_plants, sites):
     )
     selected_client_id = client_options[selected_client_label]
     
-    # Cargar facilities filtradas por cliente
-    facilities = _load_facilities(selected_client_id)
+    # Cargar facilities filtradas por cliente usando servicio inyectado
+    facilities = _load_facilities(facility_service, selected_client_id)
     
     if not facilities:
         st.warning("⚠️ No hay plantas de origen registradas para este cliente. Debe crear primero las plantas en la sección de Empresas.")
@@ -585,7 +619,7 @@ def _render_new_route_form(distance_repo, clients, treatment_plants, sites):
         is_link = True
     elif "Planta de Enlace" in dest_type:
         # Solo mostrar facilities marcadas como link_point, excluyendo el origen
-        link_facilities = [f for f in _load_facilities() if f.get('is_link_point', False) and f['id'] != origin_id]
+        link_facilities = [f for f in _load_facilities(facility_service) if f.get('is_link_point', False) and f['id'] != origin_id]
         
         if not link_facilities:
             st.warning("⚠️ No hay plantas de enlace configuradas. Marque plantas como 'Punto de Enlace' en la sección de Empresas > Plantas del Cliente.")
@@ -796,29 +830,38 @@ def _render_existing_routes(distance_repo, clients):
 # TAB 3: TARIFFS
 # ==============================================================================
 
-def _render_tariffs_tab():
-    """Renderiza el tab de Tarifarios con sub-tabs para Contratistas y Clientes."""
+def _render_tariffs_tab(client_service, contractor_service):
+    """Renderiza el tab de Tarifarios con sub-tabs para Contratistas y Clientes.
+    
+    Args:
+        client_service: Servicio de clientes
+        contractor_service: Servicio de contratistas
+    """
     st.header("💲 Tarifarios")
     
-    subtab1, subtab2 = st.tabs([
+    tab_contractors, tab_clients = st.tabs([
         "🚛 Contratistas (Costos)",
         "🏢 Clientes (Ingresos)"
     ])
     
-    with subtab1:
-        _render_contractor_tariffs()
+    with tab_contractors:
+        _render_contractor_tariffs(contractor_service)
     
-    with subtab2:
-        _render_client_tariffs()
+    with tab_clients:
+        _render_client_tariffs(client_service)
 
 
-def _render_contractor_tariffs():
-    """Sub-tab de tarifas de contratistas (costos de transporte)."""
+def _render_contractor_tariffs(contractor_service):
+    """Sub-tab de tarifas de contratistas (costos de transporte).
+    
+    Args:
+        contractor_service: Servicio de contratistas
+    """
     st.subheader("🚛 Tarifas de Contratistas")
     st.markdown("Configure las tarifas de costo con transportistas, incluyendo el precio base de combustible para ajustes polinómicos.")
     
     # Cargar contratistas reales
-    contractors = _load_contractors()
+    contractors = _load_contractors(contractor_service)
     vehicle_types = ["BATEA", "AMPLIROLL_SIMPLE", "AMPLIROLL_CARRO"]
     
     if not contractors:
@@ -909,13 +952,17 @@ def _render_contractor_tariffs():
         st.info("📋 No hay tarifas de contratistas registradas.")
 
 
-def _render_client_tariffs():
-    """Sub-tab de tarifas de clientes (ingresos en UF)."""
+def _render_client_tariffs(client_service):
+    """Sub-tab de tarifas de clientes (ingresos en UF).
+    
+    Args:
+        client_service: Servicio de clientes
+    """
     st.subheader("🏢 Tarifas de Clientes")
     st.markdown("Configure las tarifas de facturación a clientes en UF por concepto.")
     
     # Cargar clientes reales
-    clients = _load_clients()
+    clients = _load_clients(client_service)
     concepts = ["TRANSPORTE", "DISPOSICION", "TRATAMIENTO"]
     
     if not clients:

@@ -58,7 +58,7 @@ def treatment_operations_page(container):
     ])
     
     with tab_reception:
-        reception_view.render(treatment_reception_service, plant_id)
+        reception_view.render(container, plant_id)
     
     with tab_llenado:
         _render_container_filling_tab(plant_id, container_tracking_service)

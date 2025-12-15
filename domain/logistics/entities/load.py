@@ -32,6 +32,7 @@ class Load:
     ticket_number: Optional[str] = None  # Número de ticket de pesaje
     guide_number: Optional[str] = None  # Guía de despacho
     reception_observations: Optional[str] = None  # Observaciones en recepción
+    disposal_observations: Optional[str] = None  # Observaciones durante disposición
     quality_ph: Optional[float] = None  # pH de la carga (en origen/despacho)
     quality_humidity: Optional[float] = None  # Humedad de la carga (%)
     arrival_ph: Optional[float] = None  # pH medido al llegar a planta de tratamiento

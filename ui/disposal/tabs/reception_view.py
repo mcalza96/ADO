@@ -34,11 +34,25 @@ def render(container: Any, site_id: int) -> None:
     app_service = getattr(container, 'disposal_app_service', None)
     legacy_service = getattr(container, 'disposal_service', None)
     
+    # DEBUG: Mostrar qué servicio se está usando
+    st.caption(f"🔍 Debug: app_service={app_service is not None}, legacy_service={legacy_service is not None}, site_id={site_id}")
+    
     dispatched_loads = []
-    if app_service:
-        dispatched_loads = app_service.get_incoming_loads(site_id)
-    elif legacy_service:
-        dispatched_loads = _get_dispatched_loads_legacy(legacy_service, site_id)
+    try:
+        if app_service:
+            st.caption(f"🔍 Usando app_service.get_incoming_loads({site_id})")
+            dispatched_loads = app_service.get_incoming_loads(site_id)
+            st.caption(f"🔍 Resultado: {len(dispatched_loads)} cargas")
+        elif legacy_service:
+            st.caption(f"🔍 Usando legacy_service")
+            dispatched_loads = _get_dispatched_loads_legacy(legacy_service, site_id)
+            st.caption(f"🔍 Resultado: {len(dispatched_loads)} cargas")
+        else:
+            st.error("❌ No hay servicio disponible (app ni legacy)")
+    except Exception as e:
+        st.error(f"❌ Error al obtener cargas: {e}")
+        import traceback
+        st.code(traceback.format_exc())
     
     if not dispatched_loads:
         st.info("✅ No hay cargas en ruta hacia este predio.")

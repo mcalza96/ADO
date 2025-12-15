@@ -10,11 +10,23 @@ Requisitos
 - Dependencias listadas en `requirements.txt`
 
 Instalación y ejecución (macOS / Linux / WSL)
-```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 python main.py
+```
+
+Base de Datos
+Este proyecto utiliza SQLite como base de datos única:
+- **Ubicación**: `ado_system.db` (raíz del proyecto)
+- **Schema**: `database/schema.sql`
+- **Backups**: `database/*_backup_*.db`
+- **Inicialización**: `python3 -m infrastructure.persistence.database_manager`
+
+Para crear un backup manual:
+```bash
+timestamp=$(date +%Y%m%d_%H%M%S)
+cp ado_system.db "database/ado_system_backup_${timestamp}.db"
 ```
 
 Pruebas

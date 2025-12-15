@@ -165,6 +165,11 @@ def _handle_disposal_submit(
 ) -> None:
     """Handle the disposal form submission."""
     try:
+        # DEBUG
+        st.write(f"🔍 Debug - Container attributes: {dir(container)}")
+        st.write(f"🔍 Has disposal_app_service: {hasattr(container, 'disposal_app_service')}")
+        st.write(f"🔍 Has disposal_service: {hasattr(container, 'disposal_service')}")
+        
         # Use App Service if available
         if hasattr(container, 'disposal_app_service'):
             dto = DisposalExecutionDTO(
@@ -172,33 +177,19 @@ def _handle_disposal_submit(
                 plot_id=plot_id
             )
             container.disposal_app_service.execute_disposal(dto)
-        else:
+        elif hasattr(container, 'disposal_service'):
             # Fallback
             container.disposal_service.execute_disposal(
                 load_id=load_id,
                 plot_id=plot_id
             )
+        else:
+            st.error("❌ No hay servicio de disposición disponible en el container")
+            return
         
         st.success(f"✅ Carga #{load_id} dispuesta correctamente en parcela.")
         st.rerun()
     except Exception as e:
         st.error(f"❌ Error al registrar disposición: {e}")
-
-
-def _handle_disposal_submit(
-    disposal_service: Any,
-    load_id: int,
-    plot_id: int
-) -> None:
-    """Handle the disposal form submission."""
-    try:
-        disposal_service.execute_disposal(
-            load_id=load_id,
-            plot_id=plot_id
-        )
-        st.success(f"✅ Carga #{load_id} dispuesta exitosamente. Viaje completado.")
-        st.rerun()
-    except ValueError as e:
-        st.error(f"❌ Error de validación: {e}")
-    except Exception as e:
-        st.error(f"❌ Error inesperado: {e}")
+        import traceback
+        st.code(traceback.format_exc())

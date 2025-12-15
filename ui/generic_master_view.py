@@ -239,7 +239,22 @@ class GenericMasterView:
         except ValueError as e:
             st.error(f"⚠️ Error de validación: {e}")
         except Exception as e:
-            st.error(f"❌ Error: {e}")
+            error_msg = str(e)
+            # Detect UNIQUE constraint violations
+            if "UNIQUE constraint failed" in error_msg:
+                # Extract field name from error
+                if "rut" in error_msg.lower():
+                    st.error("⚠️ Ya existe un registro con este RUT")
+                elif "username" in error_msg.lower():
+                    st.error("⚠️ Ya existe un usuario con este nombre de usuario")
+                elif "email" in error_msg.lower():
+                    st.error("⚠️ Ya existe un registro con este email")
+                elif "license_plate" in error_msg.lower():
+                    st.error("⚠️ Ya existe un vehículo con esta patente")
+                else:
+                    st.error(f"⚠️ Ya existe un registro con estos datos: {error_msg}")
+            else:
+                st.error(f"❌ Error: {e}")
     
     def _render_list(self):
         """Render the list of items with edit capability."""
@@ -263,19 +278,20 @@ class GenericMasterView:
         display_cols = self.display_columns or [k for k in data[0].keys() if k not in ['id', 'created_at', 'updated_at']]
         
         # Create header row
-        cols = st.columns([3] + [2] * (len(display_cols) - 1) + [1, 1])
+        cols = st.columns([3] + [2] * (len(display_cols) - 1) + [1, 1, 1])
         for i, col_name in enumerate(display_cols):
             label = col_name.replace('_', ' ').title()
             cols[i].markdown(f"**{label}**")
-        cols[-2].markdown("**Editar**")
-        cols[-1].markdown("**Estado**")
+        cols[-3].markdown("**Editar**")
+        cols[-2].markdown("**Estado**")
+        cols[-1].markdown("**Eliminar**")
         
         st.divider()
         
         # Render each row with edit button
         for item in items:
             item_dict = vars(item).copy() if hasattr(item, '__dict__') else dict(item)
-            cols = st.columns([3] + [2] * (len(display_cols) - 1) + [1, 1])
+            cols = st.columns([3] + [2] * (len(display_cols) - 1) + [1, 1, 1])
             
             for i, col_name in enumerate(display_cols):
                 value = item_dict.get(col_name, "")
@@ -285,15 +301,25 @@ class GenericMasterView:
                 cols[i].write(value if value else "-")
             
             # Edit button
-            if cols[-2].button("✏️", key=f"edit_{self._key_prefix}_{item.id}"):
+            if cols[-3].button("✏️", key=f"edit_{self._key_prefix}_{item.id}"):
                 st.session_state[f"editing_{self._key_prefix}"] = item.id
                 st.rerun()
             
             # Toggle active status
             is_active = item_dict.get('is_active', True)
             status_icon = "🟢" if is_active else "🔴"
-            if cols[-1].button(status_icon, key=f"toggle_{self._key_prefix}_{item.id}"):
+            if cols[-2].button(status_icon, key=f"toggle_{self._key_prefix}_{item.id}"):
                 self._toggle_active(item)
+            
+            # Delete button with confirmation
+            if cols[-1].button("🗑️", key=f"delete_{self._key_prefix}_{item.id}"):
+                st.session_state[f"confirming_delete_{self._key_prefix}"] = item.id
+                st.rerun()
+        
+        # Show delete confirmation modal if needed
+        confirming_delete_id = st.session_state.get(f"confirming_delete_{self._key_prefix}")
+        if confirming_delete_id:
+            self._render_delete_confirmation(confirming_delete_id)
         
         # Show edit form if editing
         editing_id = st.session_state.get(f"editing_{self._key_prefix}")
@@ -308,6 +334,50 @@ class GenericMasterView:
             st.rerun()
         except Exception as e:
             st.error(f"❌ Error al cambiar estado: {e}")
+    
+    def _render_delete_confirmation(self, item_id: int):
+        """Render delete confirmation dialog."""
+        item = self.service.get_by_id(item_id)
+        if not item:
+            del st.session_state[f"confirming_delete_{self._key_prefix}"]
+            return
+        
+        item_dict = vars(item).copy() if hasattr(item, '__dict__') else dict(item)
+        item_name = item_dict.get('name', f'ID {item_id}')
+        
+        st.divider()
+        st.warning(f"⚠️ **¿Estás seguro de que deseas eliminar '{item_name}'?**")
+        st.caption("Esta acción no se puede deshacer.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("✅ Sí, eliminar", key=f"confirm_delete_{self._key_prefix}_{item_id}", use_container_width=True):
+                self._handle_delete(item_id)
+        with col2:
+            if st.button("❌ Cancelar", key=f"cancel_delete_{self._key_prefix}_{item_id}", use_container_width=True):
+                del st.session_state[f"confirming_delete_{self._key_prefix}"]
+                st.rerun()
+    
+    def _handle_delete(self, item_id: int):
+        """Handle item deletion."""
+        try:
+            if hasattr(self.service, 'delete'):
+                self.service.delete(item_id)
+            elif hasattr(self.service, 'soft_delete'):
+                self.service.soft_delete(item_id)
+            else:
+                # Fallback: set is_active to False
+                item = self.service.get_by_id(item_id)
+                if item:
+                    item.is_active = False
+                    self.service.save(item)
+            
+            st.success("✅ Eliminado exitosamente")
+            del st.session_state[f"confirming_delete_{self._key_prefix}"]
+            st.rerun()
+        except Exception as e:
+            st.error(f"❌ Error al eliminar: {e}")
+            del st.session_state[f"confirming_delete_{self._key_prefix}"]
     
     def _render_edit_form(self, item_id: int):
         """Render the edit form for an existing item."""
@@ -452,4 +522,17 @@ class GenericMasterView:
         except ValueError as e:
             st.error(f"⚠️ Error de validación: {e}")
         except Exception as e:
-            st.error(f"❌ Error: {e}")
+            error_msg = str(e)
+            if "UNIQUE constraint failed" in error_msg:
+                if "rut" in error_msg.lower():
+                    st.error("⚠️ Ya existe otro registro con este RUT")
+                elif "username" in error_msg.lower():
+                    st.error("⚠️ Ya existe otro usuario con este nombre de usuario")
+                elif "email" in error_msg.lower():
+                    st.error("⚠️ Ya existe otro registro con este email")
+                elif "license_plate" in error_msg.lower():
+                    st.error("⚠️ Ya existe otro vehículo con esta patente")
+                else:
+                    st.error(f"⚠️ Ya existe otro registro con estos datos")
+            else:
+                st.error(f"❌ Error: {e}")

@@ -1,6 +1,7 @@
 import streamlit as st
 from ui.masters import containers_view, transport_view, locations_view, security_view
 from ui.generic_master_view import GenericMasterView, FieldConfig
+from ui.helpers.facility_view_helper import _render_facilities_view
 from domain.shared.entities.client import Client
 from domain.processing.entities.treatment_plant import TreatmentPlant
 from domain.processing.entities.facility import Facility
@@ -93,36 +94,8 @@ def config_page(container):
             ).render()
         
         with sub_tab_facilities:
-            GenericMasterView(
-                service=facility_service,
-                model_class=Facility,
-                title="Plantas del Cliente (Instalaciones de Origen)",
-                display_columns=["name", "client_id", "address", "allowed_vehicle_types", "is_link_point"],
-                form_config={
-                    "name": FieldConfig(label="Nombre de Planta", required=True),
-                    "client_id": FieldConfig(
-                        label="Cliente",
-                        widget="selectbox",
-                        options=client_service,
-                        required=True,
-                        help="Seleccione el cliente dueño de esta instalación"
-                    ),
-                    "address": FieldConfig(label="Dirección", widget="text_area"),
-                    "latitude": FieldConfig(label="Latitud", widget="number_input"),
-                    "longitude": FieldConfig(label="Longitud", widget="number_input"),
-                    "allowed_vehicle_types": FieldConfig(
-                        label="Tipos de Vehículos Permitidos",
-                        widget="multiselect",
-                        options=VehicleType.choices(),
-                        help="Seleccione los tipos de vehículos que pueden operar en esta planta"
-                    ),
-                    "is_link_point": FieldConfig(
-                        label="¿Es Punto de Enlace?",
-                        widget="checkbox",
-                        help="Marcar si esta planta puede actuar como punto intermedio de transferencia"
-                    )
-                }
-            ).render()
+            # Custom view for Facilities with validation
+            _render_facilities_view(facility_service, client_service)
         
         with sub_tab_plants:
             GenericMasterView(

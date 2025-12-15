@@ -136,7 +136,7 @@ class DisposalService:
         
         return self.load_repo.update(load)
 
-    def execute_disposal(self, load_id: int, plot_id: int) -> bool:
+    def execute_disposal(self, load_id: int, plot_id: int, observation: str = None) -> bool:
         """
         Complete the disposal of a load to a specific plot.
         
@@ -145,6 +145,7 @@ class DisposalService:
         Args:
             load_id: ID of the load
             plot_id: ID of the plot/sector where the load is disposed
+            observation: Optional observations about the disposal
             
         Returns:
             True if successful
@@ -166,6 +167,8 @@ class DisposalService:
         
         # Actualizar la carga con la parcela de destino y completar
         load.destination_plot_id = plot_id
+        if observation:
+            load.disposal_observations = observation
         load.disposal_time = datetime.now()
         load.status = LoadStatus.COMPLETED.value
         load.updated_at = datetime.now()

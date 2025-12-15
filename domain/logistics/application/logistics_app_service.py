@@ -4,7 +4,7 @@ from domain.logistics.services.dispatch_service import LogisticsDomainService
 from domain.processing.services.container_tracking_service import ContainerTrackingService
 from domain.logistics.entities.load import Load
 from domain.logistics.services.manifest_service import ManifestService
-from infrastructure.events.event_bus import EventBus, EventTypes
+from infrastructure.events.event_bus import EventBus, EventTypes, Event
 
 class LogisticsApplicationService:
     """
@@ -46,13 +46,16 @@ class LogisticsApplicationService:
         
         # 3. Generate Manifest
         try:
-            self.manifest_service.generate(dto.load_id)
+            self.manifest_service.generate_manifest(dto.load_id)
         except Exception as e:
             # Log error but don't fail dispatch
             print(f"Error generating manifest: {e}")
             
         # 4. Publish Event
-        self.event_bus.publish(EventTypes.LOAD_DISPATCHED, {'load_id': dto.load_id})
+        self.event_bus.publish(Event(
+            event_type=EventTypes.LOAD_STATUS_CHANGED,
+            data={'load_id': dto.load_id, 'to_status': 'EN_ROUTE_DESTINATION'}
+        ))
         
         # 5. Handle container tracking if needed (for treatment plants)
         if self.container_tracking_service:

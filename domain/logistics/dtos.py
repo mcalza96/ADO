@@ -405,7 +405,7 @@ class DispatchApplicationService:
                 container_id=request.container_id
             )
             
-            manifest = self.manifest_service.generate(load.id)
+            manifest = self.manifest_service.generate_manifest(load.id)
             agronomics = self.compliance_service.calculate_agronomics(
                 request.batch_id, request.weight_net
             )
